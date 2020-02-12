@@ -6,7 +6,7 @@
             "type": "shell",
             "command": "make",
             "args": [
-                "build"
+                "ide-build"
             ],
             "group": {
                 "isDefault": true,

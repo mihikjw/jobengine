@@ -1,7 +1,7 @@
 package models
 
 type Config struct {
-	Version int
+	Version float64
 	Port    int
 	Queues  []Queue
 }

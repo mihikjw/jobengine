@@ -31,10 +31,24 @@ func NewConfigLoader(filepath, fsType string) *ConfigLoader {
 func (c *ConfigLoader) LoadFromFile() (*models.Config, error) {
 	if exists, err := c.fileHandler.FileExists(c.filePath); exists {
 		if rawFileContent, err := ioutil.ReadFile(c.filePath); err == nil {
+			result := new(models.Config)
 			configFile := make(map[interface{}]interface{})
 
 			if err = yaml.Unmarshal(rawFileContent, &configFile); err == nil {
+				result.Version = configFile["version"].(float64)
+				result.Port = configFile["port"].(int)
+				queues := configFile["queues"].(map[interface{}]interface{})
 
+				for name, data := range queues {
+					newData := data.(map[interface{}]interface{})
+					queue := models.Queue{
+						Name:  name.(string),
+						Read:  c.interfaceSliceToStringSlice(newData["read"].([]interface{})),
+						Write: c.interfaceSliceToStringSlice(newData["write"].([]interface{})),
+					}
+
+					result.Queues = append(result.Queues, queue)
+				}
 			}
 		}
 
@@ -44,4 +58,9 @@ func (c *ConfigLoader) LoadFromFile() (*models.Config, error) {
 	} else {
 		return nil, errors.New("Unable To Load Config: " + err.Error())
 	}
+}
+
+//interfaceSliceToStringSlice converts the given slice of interface types to string types
+func (c *ConfigLoader) interfaceSliceToStringSlice(input []interface{}) []string {
+	return nil
 }

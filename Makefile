@@ -24,9 +24,8 @@ test:
 	go test ./... -coverprofile=coverage.out
 	go tool cover -html=coverage.out -o coverage.html
 
-# install:
-# 	# gin is provided as an example
-# 	if [ ! -d "${GOPATH}/src/github.com/gin-gonic/gin" ]; then go get github.com/gin-gonic/gin; fi;
+install:
+	if [ ! -d "${GOPATH}/src/gopkg.in/yaml.v2" ]; then go get gopkg.in/yaml.v2; fi;
 
 success:
 	printf "\n\e[1;32mBuild Successful\e[0m\n"

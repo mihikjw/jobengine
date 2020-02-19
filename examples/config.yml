@@ -1,0 +1,15 @@
+version: 1.0
+port: 6010
+queues:
+  test_queue_1:
+    read:
+      - service1
+      - service2
+    write:
+      - service3
+  test_queue_2:
+    read:
+      - service3
+    write:
+      - service1
+      - service2

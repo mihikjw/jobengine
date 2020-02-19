@@ -7,8 +7,8 @@ import (
 )
 
 func main() {
-	if cfg := config.NewConfig("/etc/jobengine/config.json", "os"); cfg != nil {
-		if err := cfg.LoadFromFile(); err == nil {
+	if loader := config.NewConfigLoader("/etc/jobengine/config.json", "os"); loader != nil {
+		if _, err := loader.LoadFromFile(); err == nil {
 			fmt.Println("Config Loaded")
 		} else {
 			fmt.Println("Failed To Load Config: " + err.Error())

@@ -24,7 +24,7 @@ func LoadConfig(cfgPath, loaderType string) (*models.Config, error) {
 			cfg = &models.Config{
 				Version: version,
 				Port:    defaultPort,
-				Queues:  make(map[string]*models.Queue),
+				Queues:  make(map[string]*models.QueuePermissions),
 			}
 
 			if err = loader.SaveToFile(cfg); err != nil {

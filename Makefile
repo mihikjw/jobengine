@@ -1,4 +1,4 @@
-APPLICATION_NAME = gowork
+APPLICATION_NAME = jobengine
 APPLICATION_PUBLISHER = michaelwittgreffe
 
 all:

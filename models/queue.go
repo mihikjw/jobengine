@@ -1,6 +1,8 @@
 package models
 
+//Queue represents a queue of jobs to be executed
 type Queue struct {
-	Read  []string
-	Write []string
+	Jobs        []*Job
+	Permissions *QueuePermissions
+	Size        uint8
 }

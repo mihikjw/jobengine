@@ -55,11 +55,11 @@ func (l *FileLoader) LoadFromFile(version float64) (*models.Config, error) {
 				if result.Version == version {
 					result.Port = configFile["port"].(int)
 					queues := configFile["queues"].(map[interface{}]interface{})
-					result.Queues = make(map[string]*models.Queue, len(queues))
+					result.Queues = make(map[string]*models.QueuePermissions, len(queues))
 
 					for name, data := range queues {
 						newData := data.(map[interface{}]interface{})
-						queue := models.Queue{
+						queue := models.QueuePermissions{
 							Read:  l.interfaceSliceToStringSlice(newData["read"].([]interface{})),
 							Write: l.interfaceSliceToStringSlice(newData["write"].([]interface{})),
 						}

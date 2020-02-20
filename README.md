@@ -20,5 +20,4 @@ JobEngine is a 'job-queue', a queue system allowing multiple applications to dyn
 - Permissions based on application name
 - Configuration
     - From file
-    - From Env (then write to file)
-    - Default
+    - Default (then write to file)

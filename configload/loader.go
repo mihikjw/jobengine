@@ -1,4 +1,4 @@
-package config
+package configload
 
 import (
 	"errors"
@@ -10,16 +10,16 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-//ConfigLoader is a struct for loading the config from file
-type ConfigLoader struct {
+//FileLoader is a struct for loading the config from file
+type FileLoader struct {
 	filePath    string
 	fileHandler filesystem.FileSystem
 }
 
-//NewConfig acts as a constructor for the ConfigLoader
-func NewConfigLoader(filepath, fsType string) Loader {
+//NewConfigLoader acts as a constructor for the ConfigLoader
+func NewConfigLoader(filepath, fsType string) ConfigLoader {
 	if len(filepath) > 0 && len(fsType) > 0 {
-		return &ConfigLoader{
+		return &FileLoader{
 			filePath:    filepath,
 			fileHandler: filesystem.NewFileSystem(fsType),
 		}
@@ -29,14 +29,14 @@ func NewConfigLoader(filepath, fsType string) Loader {
 }
 
 //LoadFromFile loads the setup config file into memory
-func (c *ConfigLoader) LoadFromFile(version float64) (*models.Config, error) {
+func (l *FileLoader) LoadFromFile(version float64) (*models.Config, error) {
 	var err error
 	var exists bool
 
-	if exists, err = c.fileHandler.FileExists(c.filePath); exists {
+	if exists, err = l.fileHandler.FileExists(l.filePath); exists {
 		var rawFileContent []byte
 
-		if rawFileContent, err = ioutil.ReadFile(c.filePath); err == nil {
+		if rawFileContent, err = ioutil.ReadFile(l.filePath); err == nil {
 			result := new(models.Config)
 			configFile := make(map[interface{}]interface{})
 
@@ -60,8 +60,8 @@ func (c *ConfigLoader) LoadFromFile(version float64) (*models.Config, error) {
 					for name, data := range queues {
 						newData := data.(map[interface{}]interface{})
 						queue := models.Queue{
-							Read:  c.interfaceSliceToStringSlice(newData["read"].([]interface{})),
-							Write: c.interfaceSliceToStringSlice(newData["write"].([]interface{})),
+							Read:  l.interfaceSliceToStringSlice(newData["read"].([]interface{})),
+							Write: l.interfaceSliceToStringSlice(newData["write"].([]interface{})),
 						}
 
 						result.Queues[name.(string)] = &queue
@@ -69,43 +69,43 @@ func (c *ConfigLoader) LoadFromFile(version float64) (*models.Config, error) {
 
 					return result, nil
 				} else {
-					err = errors.New(fmt.Sprintf("Invalid Version, Require %f Got %f", version, result.Version))
+					err = fmt.Errorf("Invalid Version, Require %f Got %f", version, result.Version)
 				}
 			}
 		}
 
 		return nil, err
 	} else if err == nil {
-		return nil, errors.New("Not Found")
+		return nil, fmt.Errorf("Not Found")
 	} else {
-		return nil, errors.New(fmt.Sprintf("Unable To Load Config: %s" + err.Error()))
+		return nil, fmt.Errorf("Unable To Load Config: %s" + err.Error())
 	}
 }
 
 //SaveToFile saves the given config to file
-func (c *ConfigLoader) SaveToFile(cfg *models.Config) error {
+func (l *FileLoader) SaveToFile(cfg *models.Config) error {
 	var err error
 	var exists bool
 
-	if exists, err = c.fileHandler.FileExists(c.filePath); exists {
-		err = c.fileHandler.DeleteFile(c.filePath)
+	if exists, err = l.fileHandler.FileExists(l.filePath); exists {
+		err = l.fileHandler.DeleteFile(l.filePath)
 	}
 
 	if err == nil {
 		var outputData []byte
 
 		if outputData, err = yaml.Marshal(cfg); err == nil {
-			err = ioutil.WriteFile(c.filePath, outputData, 0644)
+			err = ioutil.WriteFile(l.filePath, outputData, 0644)
 		}
 	} else {
-		err = errors.New(fmt.Sprintf("Unable To Delete Cfg: %s", err.Error()))
+		err = fmt.Errorf("Unable To Delete Cfg: %s", err.Error())
 	}
 
 	return err
 }
 
 //interfaceSliceToStringSlice converts the given slice of interface types to string types
-func (c *ConfigLoader) interfaceSliceToStringSlice(input []interface{}) []string {
+func (l *FileLoader) interfaceSliceToStringSlice(input []interface{}) []string {
 	output := make([]string, len(input))
 
 	for i, value := range input {

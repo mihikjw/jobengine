@@ -30,10 +30,12 @@ func main() {
 
 		if queueCon, err = queue.NewControllerFromDB(cfg, dbFile); err != nil {
 			fmt.Println(err.Error())
+			os.Exit(1)
 		}
 	} else {
 		if queueCon, err = queue.NewControllerFromConfig(cfg); err != nil {
 			fmt.Println(err.Error())
+			os.Exit(1)
 		}
 	}
 

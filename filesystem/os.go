@@ -17,3 +17,8 @@ func (o *OperatingSystem) FileExists(filepath string) (bool, error) {
 		return false, err
 	}
 }
+
+//DeleteFile is a small wrapper for os.Remove, errors are type *PathError
+func (o *OperatingSystem) DeleteFile(filepath string) error {
+	return os.Remove(filepath)
+}

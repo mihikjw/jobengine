@@ -3,6 +3,7 @@ package filesystem
 //FileSystem holds functions for interacting with a filesystem
 type FileSystem interface {
 	FileExists(filepath string) (bool, error)
+	DeleteFile(filepath string) error
 }
 
 //NewFileSystem acts as a constructor for filesystem interfaces

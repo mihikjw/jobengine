@@ -4,6 +4,8 @@ package filesystem
 type FileSystem interface {
 	FileExists(filepath string) (bool, error)
 	DeleteFile(filepath string) error
+	ReadFile(filepath string) ([]byte, error)
+	WriteFile(filepath string, data []byte) error
 }
 
 //NewFileSystem acts as a constructor for filesystem interfaces

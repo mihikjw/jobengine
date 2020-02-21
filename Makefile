@@ -2,7 +2,7 @@ APPLICATION_NAME = jobengine
 APPLICATION_PUBLISHER = michaelwittgreffe
 
 all:
-	@$(MAKE) clean create-dir install test build success || $(MAKE) failure
+	@$(MAKE) clean create-dir test build success || $(MAKE) failure
 
 build:
 	go build -o bin/${APPLICATION_NAME} -v
@@ -21,7 +21,12 @@ clean-test-data:
 
 test:
 	@$(MAKE) clean-test-data
-	go test ./... -coverprofile=coverage.out
+	go test ./... -coverprofile=coverage.out -count=1 # -bench . 
+	go tool cover -html=coverage.out -o coverage.html
+
+test-long:
+	@$(MAKE) clean-test-data
+	go test ./... -coverprofile=coverage.out -bench . -count=1
 	go tool cover -html=coverage.out -o coverage.html
 
 update-dependencies:

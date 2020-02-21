@@ -3,17 +3,16 @@ package configload
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/MichaelWittgreffe/jobengine/filesystem"
 	"github.com/MichaelWittgreffe/jobengine/models"
-	"gopkg.in/yaml.v2"
 )
 
 //ConfigLoad is a struct for loading the config from file
 type ConfigLoad struct {
 	filePath    string
 	fileHandler filesystem.FileSystem
+	cfgParser   ConfigParser
 }
 
 //NewConfigLoader acts as a constructor for the ConfigLoader
@@ -25,6 +24,7 @@ func NewConfigLoader(filepath, fsType string) ConfigLoader {
 	return &ConfigLoad{
 		filePath:    filepath,
 		fileHandler: filesystem.NewFileSystem(fsType),
+		cfgParser:   NewConfigParser("yaml"),
 	}
 }
 
@@ -35,18 +35,21 @@ func (l *ConfigLoad) LoadFromFile(version float64) (*models.Config, error) {
 		return nil, fmt.Errorf("Not Found")
 	}
 
-	rawFileContent, err := ioutil.ReadFile(l.filePath)
+	rawFileContent, err := l.fileHandler.ReadFile(l.filePath)
+	if err != nil {
+		return nil, fmt.Errorf("Failed Loading Config: %s", err.Error())
+	}
+
+	configFile, err := l.cfgParser.Unmarshal(rawFileContent)
 	if err != nil {
 		return nil, err
 	}
 
-	configFile := make(map[interface{}]interface{})
+	return l.parseConfig(configFile)
+}
 
-	err = yaml.Unmarshal(rawFileContent, &configFile)
-	if err != nil {
-		return nil, err
-	}
-
+//parseConfig takes the loaded raw YAML cfg data and parses it into the models.Config struct
+func (l *ConfigLoad) parseConfig(configFile map[interface{}]interface{}) (*models.Config, error) {
 	result := new(models.Config)
 
 	switch tempVersion := configFile["version"].(type) {
@@ -89,12 +92,12 @@ func (l *ConfigLoad) SaveToFile(cfg *models.Config) error {
 		return fmt.Errorf("Error Locating Config File: %s", err.Error())
 	}
 
-	outputData, err := yaml.Marshal(cfg)
+	outputData, err := l.cfgParser.Marshal(cfg)
 	if err != nil {
 		return err
 	}
 
-	return ioutil.WriteFile(l.filePath, outputData, 0644)
+	return l.fileHandler.WriteFile(l.filePath, outputData)
 }
 
 //interfaceSliceToStringSlice converts the given slice of interface types to string types

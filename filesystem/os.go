@@ -1,6 +1,8 @@
 package filesystem
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 )
 
@@ -21,4 +23,23 @@ func (o *OperatingSystem) FileExists(filepath string) (bool, error) {
 //DeleteFile is a small wrapper for os.Remove, errors are type *PathError
 func (o *OperatingSystem) DeleteFile(filepath string) error {
 	return os.Remove(filepath)
+}
+
+//ReadFile loads a file into memory and returns as a byte slice
+func (o *OperatingSystem) ReadFile(filepath string) ([]byte, error) {
+	rawFileContent, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return nil, err
+	}
+
+	return rawFileContent, nil
+}
+
+//WriteFile writes a file onto disk
+func (o *OperatingSystem) WriteFile(filepath string, data []byte) error {
+	if len(filepath) <= 0 || len(data) <= 0 {
+		return fmt.Errorf("Invalid Args")
+	}
+
+	return ioutil.WriteFile(filepath, data, 0644)
 }

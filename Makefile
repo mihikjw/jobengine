@@ -24,8 +24,8 @@ test:
 	go test ./... -coverprofile=coverage.out
 	go tool cover -html=coverage.out -o coverage.html
 
-install:
-	if [ ! -d "${GOPATH}/src/gopkg.in/yaml.v2" ]; then go get gopkg.in/yaml.v2; fi;
+update-dependencies:
+	go get gopkg.in/yaml.v2
 
 success:
 	printf "\n\e[1;32mBuild Successful\e[0m\n"

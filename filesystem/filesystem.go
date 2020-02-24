@@ -6,6 +6,7 @@ type FileSystem interface {
 	DeleteFile(filepath string) error
 	ReadFile(filepath string) ([]byte, error)
 	WriteFile(filepath string, data []byte) error
+	GetEnv(name string) string
 }
 
 //NewFileSystem acts as a constructor for filesystem interfaces

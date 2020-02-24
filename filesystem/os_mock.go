@@ -8,6 +8,7 @@ type MockFileSystem struct {
 	ReadFileByteResult    []byte
 	ReadFileErrorResult   error
 	WiteFileResult        error
+	GetEnvResult          string
 }
 
 //FileExists returns values from the struct
@@ -28,4 +29,9 @@ func (fs *MockFileSystem) ReadFile(filepath string) ([]byte, error) {
 //WriteFile returns values from the struct
 func (fs *MockFileSystem) WriteFile(filepath string, data []byte) error {
 	return fs.WiteFileResult
+}
+
+//GetEnv returns values from the struct
+func (fs *MockFileSystem) GetEnv(name string) string {
+	return fs.GetEnvResult
 }

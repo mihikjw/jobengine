@@ -17,37 +17,46 @@ func main() {
 	var cfg *models.Config
 
 	if cfg, err = configload.LoadConfig(configPath, "os"); err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		quit(err)
 	}
 
 	fmt.Println("Config Loaded")
-	dbFile := queue.NewDBFile(dbPath, "os")
+	dbFile := queue.NewDBFile(dbPath, cfg.CryptoSecret, "os")
 	var queueCon *queue.Controller
 
 	if dbFile.Exists() {
 		fmt.Println("DB File Found, Loading...")
 
 		if queueCon, err = queue.NewControllerFromDB(cfg, dbFile); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			quit(err)
 		}
 	} else {
 		if queueCon, err = queue.NewControllerFromConfig(cfg); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			quit(err)
 		}
+
+		dbFile.LoadController(queueCon)
 	}
 
 	fmt.Println("Queues Loaded")
-	queueCon.AddNewQueue("blob", nil)
+
+	//spawn goroutine to handle the db file writes
+	comms := make(chan bool, 1)
+	comms <- false
+	go dbFile.Monitor(comms)
 
 	/* TO DO
-	- add a lock to the dbFile and really understand the priority/how this works in practice
-	- spawn a goroutine for writing to the QueueDB & Config
-		- requires a channel to take write requests
 	- create the API, with access to the queueCon and DB write goroutine request
 	*/
 
+	quit(nil)
+}
+
+//quit exits the program with an exit code and prints the error if there was one
+func quit(err error) {
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 	os.Exit(0)
 }

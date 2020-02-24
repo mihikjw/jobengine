@@ -21,7 +21,7 @@ clean-test-data:
 
 test:
 	@$(MAKE) clean-test-data
-	go test ./... -coverprofile=coverage.out -count=1 # -bench . 
+	go test ./... -coverprofile=coverage.out -count=1
 	go tool cover -html=coverage.out -o coverage.html
 
 test-long:

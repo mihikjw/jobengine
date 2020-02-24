@@ -1,7 +1,6 @@
 package configload
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/MichaelWittgreffe/jobengine/filesystem"
@@ -52,13 +51,18 @@ func (l *ConfigLoad) LoadFromFile(version float64) (*models.Config, error) {
 func (l *ConfigLoad) parseConfig(configFile map[interface{}]interface{}) (*models.Config, error) {
 	result := new(models.Config)
 
+	result.CryptoSecret = l.fileHandler.GetEnv("SECRET")
+	if len(result.CryptoSecret) <= 0 {
+		return nil, fmt.Errorf("Env Var SECRET Is Empty Or Not Found")
+	}
+
 	switch tempVersion := configFile["version"].(type) {
 	case float64:
 		result.Version = tempVersion
 	case int:
 		result.Version = float64(tempVersion)
 	default:
-		return nil, errors.New("Invalid Version Value")
+		return nil, fmt.Errorf("Invalid Version Value")
 	}
 
 	if result.Version != version {

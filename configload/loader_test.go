@@ -38,6 +38,7 @@ func TestLoadFromFile1(t *testing.T) {
 			FileExistsErrorResult: nil,
 			ReadFileByteResult:    []byte{118, 69, 45},
 			ReadFileErrorResult:   nil,
+			GetEnvResult:          "testsecret",
 		},
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: nil,
@@ -82,6 +83,7 @@ func TestLoadFromFile2(t *testing.T) {
 			FileExistsErrorResult: nil,
 			ReadFileByteResult:    []byte{118, 69, 45},
 			ReadFileErrorResult:   nil,
+			GetEnvResult:          "testsecret",
 		},
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: nil,
@@ -126,6 +128,7 @@ func TestLoadFromFile3(t *testing.T) {
 			FileExistsErrorResult: nil,
 			ReadFileByteResult:    nil,
 			ReadFileErrorResult:   nil,
+			GetEnvResult:          "testsecret",
 		},
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: fmt.Errorf("Test Error"),
@@ -146,6 +149,7 @@ func TestLoadFromFile4(t *testing.T) {
 			FileExistsErrorResult: nil,
 			ReadFileByteResult:    nil,
 			ReadFileErrorResult:   fmt.Errorf("Test Error"),
+			GetEnvResult:          "testsecret",
 		},
 	}
 
@@ -162,6 +166,7 @@ func TestLoadFromFile5(t *testing.T) {
 		fileHandler: &filesystem.MockFileSystem{
 			FileExistsBoolResult:  false,
 			FileExistsErrorResult: fmt.Errorf("Test Error"),
+			GetEnvResult:          "testsecret",
 		},
 	}
 
@@ -180,6 +185,7 @@ func TestLoadFromFile6(t *testing.T) {
 			FileExistsErrorResult: nil,
 			ReadFileByteResult:    []byte{118, 69, 45},
 			ReadFileErrorResult:   nil,
+			GetEnvResult:          "testsecret",
 		},
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: nil,
@@ -215,6 +221,7 @@ func TestLoadFromFile7(t *testing.T) {
 			FileExistsErrorResult: nil,
 			ReadFileByteResult:    []byte{118, 69, 45},
 			ReadFileErrorResult:   nil,
+			GetEnvResult:          "testsecret",
 		},
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: nil,
@@ -238,6 +245,42 @@ func TestLoadFromFile7(t *testing.T) {
 	_, err := loader.LoadFromFile(1.0)
 	if err == nil {
 		t.Error("TestLoadFromFile7 Did Not Return Error")
+	}
+}
+
+//TestLoadFromFile8 unable to get SECRET env var
+func TestLoadFromFile8(t *testing.T) {
+	loader := ConfigLoad{
+		filePath: "test_file_1.yml",
+		fileHandler: &filesystem.MockFileSystem{
+			FileExistsBoolResult:  true,
+			FileExistsErrorResult: nil,
+			ReadFileByteResult:    []byte{118, 69, 45},
+			ReadFileErrorResult:   nil,
+			GetEnvResult:          "",
+		},
+		cfgParser: &MockYAMLHandler{
+			UnmarshalResult: nil,
+			UnmarshalOutput: map[interface{}]interface{}{
+				"version": 2.0,
+				"port":    6010,
+				"queues": map[interface{}]interface{}{
+					"test_queue_1": map[interface{}]interface{}{
+						"read":  []interface{}{"service1", "service2"},
+						"write": []interface{}{"service3"},
+					},
+					"test_queue_2": map[interface{}]interface{}{
+						"read":  []interface{}{"service1"},
+						"write": []interface{}{"service2"},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := loader.LoadFromFile(1.0)
+	if err == nil {
+		t.Error("TestLoadFromFile8 Did Not Return Error")
 	}
 }
 
@@ -267,6 +310,7 @@ func BenchmarkLoadFromFile(b *testing.B) {
 			FileExistsErrorResult: nil,
 			ReadFileByteResult:    mockValidCfgFile,
 			ReadFileErrorResult:   nil,
+			GetEnvResult:          "testsecret",
 		},
 		cfgParser: NewConfigParser("yaml"),
 	}

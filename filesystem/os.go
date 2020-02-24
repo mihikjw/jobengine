@@ -43,3 +43,8 @@ func (o *OperatingSystem) WriteFile(filepath string, data []byte) error {
 
 	return ioutil.WriteFile(filepath, data, 0644)
 }
+
+//GetEnv returns the requested environment variable or nothing if it was not found
+func (o *OperatingSystem) GetEnv(name string) string {
+	return os.Getenv(name)
+}

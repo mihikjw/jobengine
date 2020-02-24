@@ -53,14 +53,40 @@ func (db *DBFile) LoadFromFile() error {
 		return fmt.Errorf("DB File Not Found At Path %s", db.filepath)
 	}
 
-	_, err = db.fileHandler.ReadFile(db.filepath)
+	encryptedData, err := db.fileHandler.ReadFile(db.filepath)
 	if err != nil {
 		return fmt.Errorf("Failed Loading DB File: %s", err.Error())
 	}
 
 	//un-encrypt and load data here
+	cypher, err := aes.NewCipher([]byte(db.cryptoSecret))
+	if err != nil {
+		return fmt.Errorf("Failed To Create AES Key: %s", err.Error())
+	}
 
-	return nil
+	gcm, err := cipher.NewGCM(cypher)
+	if err != nil {
+		return fmt.Errorf("Failed To Create GCM: %s", err.Error())
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(encryptedData) < nonceSize {
+		return fmt.Errorf("Failed To Create Nonce Of Required Size, DataSize: %d, NonceSize: %d", len(encryptedData), nonceSize)
+	}
+
+	nonce, encryptedData := encryptedData[:nonceSize], encryptedData[nonceSize:]
+	rawDataString, err := gcm.Open(nil, nonce, encryptedData, nil)
+	if err != nil {
+		return fmt.Errorf("Failed To Decrypt Data: %s", err.Error())
+	}
+
+	rawData := make(map[string]interface{})
+	err = json.Unmarshal(rawDataString, &rawData)
+	if err != nil {
+		return fmt.Errorf("Failed To Unmarshal Data: %s", err.Error())
+	}
+
+	return db.controller.LoadQueues(rawData)
 }
 
 //SaveToFile saves the loaded data onto file
@@ -115,9 +141,9 @@ func (db *DBFile) Monitor(write chan bool) {
 		select {
 		case writeFlag, open := <-write:
 			if open {
-				write <- false //reset flag before write
-
 				if writeFlag {
+					write <- false //reset flag before write
+
 					if err := db.SaveToFile(); err != nil {
 						fmt.Printf("Error Saving DB File: %s\n", err.Error())
 					}

@@ -13,8 +13,16 @@ JobEngine is a 'job-queue', a queue system allowing multiple applications to dyn
         - internal details
         - user supplied JSON
         - timeout flag
-    - Job API (create/get/mark_status)
-    - Queue API (create/delete queues)
+    - API (create/get/mark_status)
+        - jobs
+            - create
+            - read
+            - update status
+            - delete
+        - queues
+            - create
+            - read
+            - delete
 - Queue should be written to disk regularly
     - file should be encrypted
 - Permissions based on application name

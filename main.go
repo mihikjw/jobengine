@@ -42,7 +42,7 @@ func main() {
 	fmt.Println("Queues Loaded")
 
 	comms := make(chan bool, 1)
-	comms <- true
+	comms <- false
 	go dbFile.Monitor(comms)
 	fmt.Println("Write Monitor Routine Started")
 

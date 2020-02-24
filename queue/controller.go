@@ -85,6 +85,7 @@ func (c *Controller) ExportQueues() (map[string]interface{}, error) {
 				"last_updated": job.LastUpdated,
 				"created":      job.Created,
 				"timeout_time": job.TimeoutTime,
+				"priority":     job.Priority,
 			}
 		}
 
@@ -105,4 +106,114 @@ func (c *Controller) ExportQueues() (map[string]interface{}, error) {
 	}
 
 	return result, nil
+}
+
+//LoadQueues loads the results of ExportQueues into memory
+func (c *Controller) LoadQueues(in map[string]interface{}) error {
+	if in == nil {
+		return fmt.Errorf("Invalid Arg")
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.queues = make(map[string]*models.Queue, len(in))
+
+	for queueName, queueData := range in {
+		queueData := queueData.(map[string]interface{})
+		permData := queueData["permissions"].(map[string]interface{})
+		jobData := queueData["jobs"].(map[string]interface{})
+		queueEntry := &models.Queue{
+			Name: queueName,
+			Size: uint8(queueData["size"].(float64)),
+			Jobs: make([]*models.Job, uint8(queueData["size"].(float64))),
+			Permissions: &models.QueuePermissions{
+				Read:  c.interfaceSliceToStringSlice(permData["read"].([]interface{})),
+				Write: c.interfaceSliceToStringSlice(permData["write"].([]interface{})),
+			},
+		}
+
+		for i, job := range jobData {
+			job := job.(map[string]interface{})
+			iConv, err := strconv.Atoi(i)
+			if err != nil {
+				return fmt.Errorf("Failed To Assert Job Queue Key As Int: %s", i)
+			}
+			queueEntry.Jobs[iConv] = &models.Job{
+				UID:         job["uid"].(string),
+				Content:     job["content"].(map[string]interface{}),
+				State:       job["state"].(string),
+				LastUpdated: int64(job["last_updated"].(float64)),
+				Created:     int64(job["created"].(float64)),
+				TimeoutTime: int64(job["timeout_time"].(float64)),
+				Priority:    uint8(job["priority"].(float64)),
+			}
+		}
+
+		c.queues[queueName] = queueEntry
+	}
+
+	return nil
+}
+
+//QueueExists checks if the given queue exists, and whether the user is allowed to see it
+func (c *Controller) QueueExists(queueName, appName string) (bool, bool, bool) {
+	queue, found := c.queues[queueName]
+
+	if found {
+		readAllowed := false
+		writeAllowed := false
+
+		for _, name := range queue.Permissions.Read {
+			if name == appName {
+				readAllowed = true
+				break
+			}
+		}
+
+		for _, name := range queue.Permissions.Write {
+			if name == appName {
+				writeAllowed = true
+				break
+			}
+		}
+
+		if !readAllowed && !writeAllowed {
+			found = false //user cannot see this queue
+		}
+
+		return found, readAllowed, writeAllowed
+	}
+
+	return false, false, false
+}
+
+//AddNewJob adds the given job entry to the queue - must check write permission yourself first
+func (c *Controller) AddNewJob(queueName string, in *models.Job) error {
+	if len(queueName) <= 0 || in == nil {
+		return fmt.Errorf("Invalid Args")
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	queue, found := c.queues[queueName]
+	if !found {
+		return fmt.Errorf("Queue Not Found")
+	}
+
+	queue.Jobs = append(queue.Jobs, in)
+	queue.Size++
+	return nil
+}
+
+//interfaceSliceToStringSlice converts a slice of interface types to a slice of string types
+func (c *Controller) interfaceSliceToStringSlice(in []interface{}) []string {
+	output := make([]string, len(in))
+
+	for i, data := range in {
+		output[i] = data.(string)
+	}
+
+	return output
 }

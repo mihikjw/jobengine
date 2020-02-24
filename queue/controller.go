@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 
@@ -203,6 +204,9 @@ func (c *Controller) AddNewJob(queueName string, in *models.Job) error {
 	}
 
 	queue.Jobs = append(queue.Jobs, in)
+	sort.Slice(queue.Jobs, func(i, j int) bool {
+		return queue.Jobs[i].Priority > queue.Jobs[j].Priority
+	})
 	queue.Size++
 	return nil
 }

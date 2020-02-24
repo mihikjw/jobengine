@@ -113,12 +113,17 @@ func (db *DBFile) SaveToFile() error {
 func (db *DBFile) Monitor(write chan bool) {
 	for true {
 		select {
-		case writeFlag := <-write:
-			if writeFlag {
+		case writeFlag, open := <-write:
+			if open {
 				write <- false //reset flag before write
-				if err := db.SaveToFile(); err != nil {
-					fmt.Printf("Error Saving DB File: %s", err.Error())
+
+				if writeFlag {
+					if err := db.SaveToFile(); err != nil {
+						fmt.Printf("Error Saving DB File: %s\n", err.Error())
+					}
 				}
+			} else {
+				fmt.Println("DBFile Write Channel Closed")
 			}
 		}
 	}

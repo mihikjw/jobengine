@@ -8,7 +8,8 @@
             "mode": "auto",
             "program": "${workspaceFolder}/main.go",
             "env": {
-                "SECRET": "passphrasewhichneedstobe32bytes!"
+                "SECRET": "passphrasewhichneedstobe32bytes!",
+                "GIN_MODE": "debug"
             },
             "args": []
         }

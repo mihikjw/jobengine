@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/MichaelWittgreffe/jobengine/api"
 	"github.com/MichaelWittgreffe/jobengine/configload"
 	"github.com/MichaelWittgreffe/jobengine/models"
 	"github.com/MichaelWittgreffe/jobengine/queue"
@@ -40,16 +41,15 @@ func main() {
 
 	fmt.Println("Queues Loaded")
 
-	//spawn goroutine to handle the db file writes
 	comms := make(chan bool, 1)
-	comms <- false
+	comms <- true
 	go dbFile.Monitor(comms)
+	fmt.Println("Write Monitor Routine Started")
 
-	/* TO DO
-	- create the API, with access to the queueCon and DB write goroutine request
-	*/
-
-	quit(nil)
+	server := api.NewAPIServer(cfg.Version, queueCon, comms)
+	fmt.Printf("API Starting On Port %d\n", cfg.Port)
+	err = server.ListenAndServe(cfg.Port)
+	quit(err)
 }
 
 //quit exits the program with an exit code and prints the error if there was one

@@ -31,6 +31,7 @@ test-long:
 
 update-dependencies:
 	go get gopkg.in/yaml.v2
+	go get github.com/gin-gonic/gin
 
 success:
 	printf "\n\e[1;32mBuild Successful\e[0m\n"

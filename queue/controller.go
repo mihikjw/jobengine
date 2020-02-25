@@ -74,16 +74,43 @@ func (c *Controller) AddNewQueue(name string, permissions *models.QueuePermissio
 	return nil
 }
 
-//ExportQueues returns the set of loaded queues as a map
+//ExportQueues returns all the loaded queues as a map
 func (c *Controller) ExportQueues() (map[string]interface{}, error) {
 	result := make(map[string]interface{}, len(c.queues))
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	for name, data := range c.queues {
-		jobs := make(map[string]interface{}, data.Size)
+		result[name] = c.exportQueue(name, "", data)
+	}
 
-		for i, job := range data.Jobs {
+	return result, nil
+}
+
+//ExportQueue returns a queue as a map[string]interface
+func (c *Controller) ExportQueue(name, status string) (map[string]interface{}, error) {
+	if len(name) <= 0 {
+		return nil, fmt.Errorf("Invalid Arg")
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	data, located := c.queues[name]
+	if !located {
+		return nil, nil
+	}
+
+	result := c.exportQueue(name, status, data)
+	return result, nil
+}
+
+//exportQueue takes the queue name and a Queue model, and transforms them into a map[string]interface{}
+func (c *Controller) exportQueue(name, status string, data *models.Queue) map[string]interface{} {
+	jobs := make(map[string]interface{}, data.Size)
+
+	for i, job := range data.Jobs {
+		if len(status) == 0 || status == job.State {
 			jobs[strconv.Itoa(i)] = map[string]interface{}{
 				"uid":          job.UID,
 				"content":      job.Content,
@@ -94,20 +121,18 @@ func (c *Controller) ExportQueues() (map[string]interface{}, error) {
 				"priority":     job.Priority,
 			}
 		}
-
-		permissions := make(map[string][]string, 2)
-		permissions["read"] = c.copyStringSlice(data.Permissions.Read)
-		permissions["write"] = c.copyStringSlice(data.Permissions.Write)
-
-		result[name] = map[string]interface{}{
-			"name":        data.Name,
-			"size":        data.Size,
-			"permissions": permissions,
-			"jobs":        jobs,
-		}
 	}
 
-	return result, nil
+	permissions := make(map[string][]string, 2)
+	permissions["read"] = c.copyStringSlice(data.Permissions.Read)
+	permissions["write"] = c.copyStringSlice(data.Permissions.Write)
+
+	return map[string]interface{}{
+		"name":        data.Name,
+		"size":        data.Size,
+		"permissions": permissions,
+		"jobs":        jobs,
+	}
 }
 
 //LoadQueues loads the results of ExportQueues into memory

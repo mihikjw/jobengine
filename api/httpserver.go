@@ -28,7 +28,9 @@ func NewHTTPServer(con *queue.Controller, write chan bool) *HTTPServer {
 	public := result.router.Group("/api/v1")
 	public.GET("/test", result.test)
 	public.PUT("/jobs/create", result.createJob)
-	public.GET("jobs/next", result.getNextjob)
+	public.GET("/jobs/next", result.getNextjob)
+	public.GET("/jobs", result.getJobsAtStatus)
+	public.POST("/jobs/")
 
 	return result
 }
@@ -86,11 +88,8 @@ func (s *HTTPServer) createJob(gc *gin.Context) {
 		return
 	}
 
-	//request queue change write to disk
 	s.write <- true
-
 	gc.Status(http.StatusCreated)
-	return
 }
 
 //getNextJob is a handler for requests to /api/v1/jobs/next, returns the next job in the queue and marks as 'Inprogress'
@@ -130,4 +129,45 @@ func (s *HTTPServer) getNextjob(gc *gin.Context) {
 
 	jobMap := JobToMap(job)
 	gc.JSON(http.StatusOK, jobMap)
+}
+
+//getJobsAtStatus is a handler for requests to /api/v1/jobs, returns all the jobs in the queue, optionally at the given status
+func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
+	appName := gc.GetHeader("X-Name")
+	if len(appName) <= 0 {
+		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Missing Header Field: X-Name"))
+		return
+	}
+
+	queueName := gc.GetHeader("X-Queue")
+	if len(queueName) <= 0 {
+		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Missing Header Field: X-Queue"))
+		return
+	}
+
+	statusFilter := gc.GetHeader("X-Status-Filter")
+
+	queueFound, readAllowed, _ := s.controller.QueueExists(queueName, appName)
+	if !queueFound {
+		gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Queue %s Not Found", queueName))
+		return
+	}
+	if !readAllowed {
+		gc.AbortWithError(http.StatusForbidden, fmt.Errorf("Permission Denied For Read From Queue %s", queueName))
+		return
+	}
+
+	//call GetNextJob to update the queue statuses before exporting
+	s.controller.GetNextJob(queueName)
+
+	jobs, err := s.controller.ExportQueue(queueName, statusFilter)
+	if err != nil {
+		gc.AbortWithError(http.StatusInternalServerError, fmt.Errorf("Error Getting Jobs: %s", err.Error()))
+		return
+	} else if jobs == nil {
+		gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Queue %s Not Found", queueName))
+		return
+	}
+
+	gc.JSON(http.StatusOK, jobs["jobs"])
 }

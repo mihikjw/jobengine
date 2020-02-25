@@ -22,9 +22,12 @@ func LoadConfig(cfgPath, loaderType string) (*models.Config, error) {
 			return cfg, nil
 		} else if err.Error() == "Not Found" {
 			cfg = &models.Config{
-				Version: version,
-				Port:    defaultPort,
-				Queues:  make(map[string]*models.QueuePermissions),
+				Version:           version,
+				Port:              defaultPort,
+				Queues:            make(map[string]*models.QueuePermissions),
+				JobTimeoutMinutes: 10,
+				JobKeepMinutes:    60,
+				CryptoSecret:      "32BYTESTRING_GKYTEBJ784GIRJAQP80",
 			}
 
 			if err = loader.SaveToFile(cfg); err != nil {

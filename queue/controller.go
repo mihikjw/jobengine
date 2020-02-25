@@ -5,27 +5,32 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/MichaelWittgreffe/jobengine/models"
 )
 
 //Controller is a handler for interacting with queues
 type Controller struct {
-	queues map[string]*models.Queue
-	mutex  sync.Mutex
+	queues            map[string]*models.Queue
+	mutex             sync.Mutex
+	jobKeepMinutes    int
+	jobTimeoutMinutes int
 }
 
 //NewController is a constructor for Controller, creating a blank, new controller
-func NewController() *Controller {
+func NewController(jobKeepMinutes, jobTimeoutMinutes int) *Controller {
 	return &Controller{
-		queues: make(map[string]*models.Queue),
-		mutex:  sync.Mutex{},
+		queues:            make(map[string]*models.Queue),
+		mutex:             sync.Mutex{},
+		jobKeepMinutes:    jobKeepMinutes * 60,
+		jobTimeoutMinutes: jobTimeoutMinutes * 60,
 	}
 }
 
 //NewControllerFromConfig is a constructor for Controller, creating a controller from a config file
 func NewControllerFromConfig(cfg *models.Config) (*Controller, error) {
-	result := NewController()
+	result := NewController(cfg.JobKeepMinutes, cfg.JobTimeoutMinutes)
 
 	for name, permissions := range cfg.Queues {
 		if err := result.AddNewQueue(name, permissions); err != nil {
@@ -38,7 +43,7 @@ func NewControllerFromConfig(cfg *models.Config) (*Controller, error) {
 
 //NewControllerFromDB is a constructor for Controller, creating from an existing store rather than from scratch
 func NewControllerFromDB(cfg *models.Config, db *DBFile) (*Controller, error) {
-	result := NewController()
+	result := NewController(cfg.JobKeepMinutes, cfg.JobTimeoutMinutes)
 	db.LoadController(result)
 	db.LoadFromFile()
 	// any new queues in the config or removed queues should be resolved here
@@ -71,9 +76,9 @@ func (c *Controller) AddNewQueue(name string, permissions *models.QueuePermissio
 
 //ExportQueues returns the set of loaded queues as a map
 func (c *Controller) ExportQueues() (map[string]interface{}, error) {
+	result := make(map[string]interface{}, len(c.queues))
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	result := make(map[string]interface{}, len(c.queues))
 
 	for name, data := range c.queues {
 		jobs := make(map[string]interface{}, data.Size)
@@ -91,12 +96,8 @@ func (c *Controller) ExportQueues() (map[string]interface{}, error) {
 		}
 
 		permissions := make(map[string][]string, 2)
-		tmp1 := make([]string, len(data.Permissions.Read))
-		copy(tmp1, data.Permissions.Read)
-		permissions["read"] = tmp1
-		tmp2 := make([]string, len(data.Permissions.Write))
-		copy(tmp2, data.Permissions.Write)
-		permissions["write"] = tmp2
+		permissions["read"] = c.copyStringSlice(data.Permissions.Read)
+		permissions["write"] = c.copyStringSlice(data.Permissions.Write)
 
 		result[name] = map[string]interface{}{
 			"name":        data.Name,
@@ -159,6 +160,9 @@ func (c *Controller) LoadQueues(in map[string]interface{}) error {
 
 //QueueExists checks if the given queue exists, and whether the user is allowed to see it
 func (c *Controller) QueueExists(queueName, appName string) (bool, bool, bool) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	queue, found := c.queues[queueName]
 
 	if found {
@@ -220,4 +224,76 @@ func (c *Controller) interfaceSliceToStringSlice(in []interface{}) []string {
 	}
 
 	return output
+}
+
+//copyStringSlice copies a slice of strings into a new slice of strings
+func (c *Controller) copyStringSlice(in []string) []string {
+	result := make([]string, len(in))
+	copy(result, in)
+	return result
+}
+
+/*GetNextJob returns the next job in the specified queue, at status 'queued', will also remove jobs that are timed-out
+or are complete/failed and over the keep period*/
+func (c *Controller) GetNextJob(queueName string) (*models.Job, error) {
+	if len(queueName) <= 0 {
+		return nil, fmt.Errorf("Invalid Arg")
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	queue, found := c.queues[queueName]
+	if !found {
+		return nil, nil
+	}
+
+	currentTime := time.Now().Unix()
+	indexToDelete := make([]int, 0)
+	var result *models.Job
+
+	for i, job := range queue.Jobs {
+		//remove complete/failed jobs that are outside the keep window
+		if (job.State == models.Complete || job.State == models.Failed) && job.LastUpdated < (currentTime-int64(c.jobKeepMinutes)) {
+			indexToDelete = append(indexToDelete, i)
+			continue
+		}
+
+		//mark as failed if no update within the timeout cut-off
+		if job.State == models.Inprogress && (job.LastUpdated < (currentTime - int64(c.jobTimeoutMinutes))) {
+			job.State = models.Failed
+			job.LastUpdated = currentTime
+		}
+
+		if job.State == models.Queued {
+			//delete queued jobs that are timed out
+			if currentTime > job.TimeoutTime {
+				indexToDelete = append(indexToDelete, i)
+				continue
+			}
+
+			job.State = models.Inprogress
+			job.LastUpdated = currentTime
+			result = job
+			break
+		}
+	}
+
+	for _, indexToDelete := range indexToDelete {
+		c.deleteJobAtIndex(queue, indexToDelete)
+	}
+
+	c.queues[queueName] = queue
+	return result, nil
+}
+
+//deleteJobAtIndex removes the given index from the job queue, does not memory leak
+func (c *Controller) deleteJobAtIndex(queue *models.Queue, i int) {
+	queueLenMinus := len(queue.Jobs) - 1
+	if i < (queueLenMinus) {
+		copy(queue.Jobs[i:], queue.Jobs[i+1:])
+	}
+	queue.Jobs[queueLenMinus] = nil
+	queue.Jobs = queue.Jobs[:queueLenMinus]
+	queue.Size = uint8(len(queue.Jobs))
 }

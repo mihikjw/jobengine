@@ -69,6 +69,8 @@ func (l *ConfigLoad) parseConfig(configFile map[interface{}]interface{}) (*model
 		return nil, fmt.Errorf("Invalid Version, Require %f Got %f", version, result.Version)
 	}
 
+	result.JobKeepMinutes = configFile["job_keep_minutes"].(int)
+	result.JobTimeoutMinutes = configFile["job_timeout_minutes"].(int)
 	result.Port = configFile["port"].(int)
 	queues := configFile["queues"].(map[interface{}]interface{})
 	result.Queues = make(map[string]*models.QueuePermissions, len(queues))

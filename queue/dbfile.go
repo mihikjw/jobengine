@@ -1,31 +1,28 @@
 package queue
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/MichaelWittgreffe/jobengine/filesystem"
 )
 
 //DBFile represents the encrypted file holding persistent queue data
 type DBFile struct {
-	filepath     string
-	cryptoSecret string
-	fileHandler  filesystem.FileSystem
-	controller   *Controller
+	filepath    string
+	crypto      EncryptionHandler
+	fileHandler filesystem.FileSystem
+	jsonHandler JSONHandler
+	controller  *Controller
 }
 
 //NewDBFile is a constructor for DBFile
 func NewDBFile(filepath, cryptoSecret, fsType string) *DBFile {
 	return &DBFile{
-		filepath:     filepath,
-		cryptoSecret: cryptoSecret,
-		fileHandler:  filesystem.NewFileSystem(fsType),
-		controller:   nil,
+		filepath:    filepath,
+		crypto:      NewEncryptionHandler(cryptoSecret, "AES"),
+		fileHandler: filesystem.NewFileSystem(fsType),
+		jsonHandler: new(JSONHandle),
+		controller:  nil,
 	}
 }
 
@@ -58,30 +55,12 @@ func (db *DBFile) LoadFromFile() error {
 		return fmt.Errorf("Failed Loading DB File: %s", err.Error())
 	}
 
-	//un-encrypt and load data here
-	cypher, err := aes.NewCipher([]byte(db.cryptoSecret))
+	rawDataString, err := db.crypto.Decrypt(encryptedData)
 	if err != nil {
-		return fmt.Errorf("Failed To Create AES Key: %s", err.Error())
+		return fmt.Errorf("Error Decrypting DB File: %s", err.Error())
 	}
 
-	gcm, err := cipher.NewGCM(cypher)
-	if err != nil {
-		return fmt.Errorf("Failed To Create GCM: %s", err.Error())
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(encryptedData) < nonceSize {
-		return fmt.Errorf("Failed To Create Nonce Of Required Size, DataSize: %d, NonceSize: %d", len(encryptedData), nonceSize)
-	}
-
-	nonce, encryptedData := encryptedData[:nonceSize], encryptedData[nonceSize:]
-	rawDataString, err := gcm.Open(nil, nonce, encryptedData, nil)
-	if err != nil {
-		return fmt.Errorf("Failed To Decrypt Data: %s", err.Error())
-	}
-
-	rawData := make(map[string]interface{})
-	err = json.Unmarshal(rawDataString, &rawData)
+	rawData, err := db.jsonHandler.Unmarshal(rawDataString)
 	if err != nil {
 		return fmt.Errorf("Failed To Unmarshal Data: %s", err.Error())
 	}
@@ -108,29 +87,15 @@ func (db *DBFile) SaveToFile() error {
 		return fmt.Errorf("Failed To Export Queues: %s", err.Error())
 	}
 
-	fileData, err := json.Marshal(rawData)
+	fileData, err := db.jsonHandler.Marshal(rawData)
 	if err != nil {
 		return fmt.Errorf("Failed To Marshal Queues: %s", err.Error())
 	}
 
-	encryptionKey := []byte(db.cryptoSecret)
-
-	cypher, err := aes.NewCipher(encryptionKey)
+	encryptedData, err := db.crypto.Encrypt(fileData)
 	if err != nil {
-		return fmt.Errorf("Failed To Create AES Key: %s", err.Error())
+		return fmt.Errorf("Failed to Encrypt Data: %s", err.Error())
 	}
-
-	gcm, err := cipher.NewGCM(cypher)
-	if err != nil {
-		return fmt.Errorf("Failed To Create GCM: %s", err.Error())
-	}
-
-	cryptoData := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(rand.Reader, cryptoData); err != nil {
-		return fmt.Errorf("Failed To Gen Random Encryption Data: %s", err.Error())
-	}
-
-	encryptedData := gcm.Seal(cryptoData, cryptoData, fileData, nil)
 
 	return db.fileHandler.WriteFile(db.filepath, encryptedData)
 }

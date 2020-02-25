@@ -1,5 +1,7 @@
 version: 1
 port: 6010
+job_keep_minutes: 30
+job_timeout_minutes: 30
 queues:
   test_queue_1:
     read:

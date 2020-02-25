@@ -40,6 +40,7 @@ func main() {
 	}
 
 	fmt.Println("Queues Loaded")
+	fmt.Printf("Jobs Older Than %d Minutes Will Be Deleted\n", cfg.JobKeepMinutes)
 
 	comms := make(chan bool, 1)
 	comms <- false

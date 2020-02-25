@@ -7,6 +7,12 @@ JobEngine is a 'job-queue', a queue system allowing multiple applications to dyn
 2. ```cd $GOPATH/github.com/MichaelWittgreffe/jobengine```
 3. ```make```
 
+## TO DO:
+- REFACTOR!
+- Add Read/Update Status/Delete to Jobs
+- Add Create, Read, Delete to queues
+    - Add goroutine to monitor config updates
+
 ## Requirements
 - Internal queue for jobs
     - Job object
@@ -15,18 +21,20 @@ JobEngine is a 'job-queue', a queue system allowing multiple applications to dyn
         - timeout flag
     - API (create/get/mark_status)
         - jobs
-            - create
+            - create: yes
             - read
-            - update status
-            - delete
+                - next: yes
+                - all: 
+            - update status: 
+            - delete: 
         - queues
-            - create
-            - read
-            - delete
-- Queue should be written to disk regularly
-    - file should be encrypted
-- Permissions based on application name
-- Configuration
-    - From file
-    - Encryption Key from env
-    - Default (then write to file) 
+            - create: 
+            - read: 
+            - delete: 
+- Queue should be written to disk regularly: yes
+    - file should be encrypted: yes
+- Permissions based on application name: yes
+- Configuration: yes
+    - From file: yes
+    - Encryption Key from env: yes
+    - Default (then write to file):  

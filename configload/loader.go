@@ -12,6 +12,7 @@ type ConfigLoad struct {
 	filePath    string
 	fileHandler filesystem.FileSystem
 	cfgParser   ConfigParser
+	hasher      HashProcessor
 }
 
 //NewConfigLoader acts as a constructor for the ConfigLoader
@@ -24,6 +25,7 @@ func NewConfigLoader(filepath, fsType string) ConfigLoader {
 		filePath:    filepath,
 		fileHandler: filesystem.NewFileSystem(fsType),
 		cfgParser:   NewConfigParser("yaml"),
+		hasher:      NewHashProcessor("md5"),
 	}
 }
 
@@ -51,9 +53,16 @@ func (l *ConfigLoad) LoadFromFile(version float64) (*models.Config, error) {
 func (l *ConfigLoad) parseConfig(configFile map[interface{}]interface{}) (*models.Config, error) {
 	result := new(models.Config)
 
-	result.CryptoSecret = l.fileHandler.GetEnv("SECRET")
-	if len(result.CryptoSecret) <= 0 {
+	tmpCryptoSecret := l.fileHandler.GetEnv("SECRET")
+	if len(tmpCryptoSecret) <= 0 {
 		return nil, fmt.Errorf("Env Var SECRET Is Empty Or Not Found")
+	}
+
+	//ensures secret is always 32-bytes in length
+	var err error
+	result.CryptoSecret, err = l.hasher.Process(tmpCryptoSecret)
+	if err != nil {
+		return nil, fmt.Errorf("Error Hashing Secret: %s", err.Error())
 	}
 
 	switch tempVersion := configFile["version"].(type) {

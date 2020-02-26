@@ -57,7 +57,7 @@ func (db *DBFile) LoadFromFile() error {
 
 	rawDataString, err := db.crypto.Decrypt(encryptedData)
 	if err != nil {
-		return fmt.Errorf("Error Decrypting DB File: %s", err.Error())
+		return fmt.Errorf("Failed Decrypting DB File: %s", err.Error())
 	}
 
 	rawData, err := db.jsonHandler.Unmarshal(rawDataString)

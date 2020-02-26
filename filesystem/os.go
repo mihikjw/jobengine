@@ -48,3 +48,8 @@ func (o *OperatingSystem) WriteFile(filepath string, data []byte) error {
 func (o *OperatingSystem) GetEnv(name string) string {
 	return os.Getenv(name)
 }
+
+//Open returns a handle to a file
+func (o *OperatingSystem) Open(filepath string) (*os.File, error) {
+	return os.Open(filepath)
+}

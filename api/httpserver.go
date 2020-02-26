@@ -116,6 +116,11 @@ func (s *HTTPServer) getNextjob(gc *gin.Context) {
 		return
 	}
 
+	if err := s.controller.UpdateQueue(queueName); err != nil {
+		gc.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
 	job, err := s.controller.GetNextJob(queueName)
 	s.write <- true
 
@@ -157,8 +162,13 @@ func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
 		return
 	}
 
-	//call GetNextJob to update the queue statuses before exporting
-	s.controller.GetNextJob(queueName)
+	if err := s.controller.UpdateQueue(queueName); err != nil {
+		gc.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	//write the changes in UpdateQueue
+	s.write <- true
 
 	jobs, err := s.controller.ExportQueue(queueName, statusFilter)
 	if err != nil {

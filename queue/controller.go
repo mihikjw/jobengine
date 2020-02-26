@@ -45,9 +45,15 @@ func NewControllerFromConfig(cfg *models.Config) (*Controller, error) {
 func NewControllerFromDB(cfg *models.Config, db *DBFile) (*Controller, error) {
 	result := NewController(cfg.JobKeepMinutes, cfg.JobTimeoutMinutes)
 	db.LoadController(result)
-	db.LoadFromFile()
+
+	err := db.LoadFromFile()
+	if err != nil {
+		return result, fmt.Errorf("Error Loading DB: %s", err.Error())
+	}
+
 	// any new queues in the config or removed queues should be resolved here
 	// if there's any differences, call db.SaveToFile() before returning
+
 	return result, nil
 }
 
@@ -258,6 +264,45 @@ func (c *Controller) copyStringSlice(in []string) []string {
 	return result
 }
 
+//UpdateQueue iterates over the queue and resolves any timeouts/mark as failed, should be called prior to read requests
+func (c *Controller) UpdateQueue(queueName string) error {
+	if len(queueName) <= 0 {
+		return fmt.Errorf("Invalid Arg")
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	queue, found := c.queues[queueName]
+	if !found {
+		return fmt.Errorf("Queue Not Found")
+	}
+
+	currentTime := time.Now().Unix()
+	indexToDelete := make([]int, 0)
+
+	for i, job := range queue.Jobs {
+		if (job.State == models.Complete || job.State == models.Failed) && job.LastUpdated < (currentTime-int64(c.jobKeepMinutes)) {
+			//remove complete/failed jobs that are outside the keep window
+			indexToDelete = append(indexToDelete, i)
+		} else if job.State == models.Inprogress && (job.LastUpdated < (currentTime - int64(c.jobTimeoutMinutes))) {
+			//mark as failed if no update within the timeout cut-off
+			job.State = models.Failed
+			job.LastUpdated = currentTime
+		} else if (job.State == models.Queued) && (currentTime > job.TimeoutTime) {
+			//delete queued jobs that are timed out
+			indexToDelete = append(indexToDelete, i)
+		}
+	}
+
+	for _, indexToDelete := range indexToDelete {
+		c.deleteJobAtIndex(queue, indexToDelete)
+	}
+
+	c.queues[queueName] = queue
+	return nil
+}
+
 /*GetNextJob returns the next job in the specified queue, at status 'queued', will also remove jobs that are timed-out
 or are complete/failed and over the keep period*/
 func (c *Controller) GetNextJob(queueName string) (*models.Job, error) {
@@ -273,46 +318,18 @@ func (c *Controller) GetNextJob(queueName string) (*models.Job, error) {
 		return nil, nil
 	}
 
-	currentTime := time.Now().Unix()
-	indexToDelete := make([]int, 0)
-	var result *models.Job
-
-	for i, job := range queue.Jobs {
-		//remove complete/failed jobs that are outside the keep window
-		if (job.State == models.Complete || job.State == models.Failed) && job.LastUpdated < (currentTime-int64(c.jobKeepMinutes)) {
-			indexToDelete = append(indexToDelete, i)
-			continue
-		}
-
-		//mark as failed if no update within the timeout cut-off
-		if job.State == models.Inprogress && (job.LastUpdated < (currentTime - int64(c.jobTimeoutMinutes))) {
-			job.State = models.Failed
-			job.LastUpdated = currentTime
-		}
-
+	for _, job := range queue.Jobs {
 		if job.State == models.Queued {
-			//delete queued jobs that are timed out
-			if currentTime > job.TimeoutTime {
-				indexToDelete = append(indexToDelete, i)
-				continue
-			}
-
 			job.State = models.Inprogress
-			job.LastUpdated = currentTime
-			result = job
-			break
+			job.LastUpdated = time.Now().Unix()
+			return job, nil //success return
 		}
 	}
 
-	for _, indexToDelete := range indexToDelete {
-		c.deleteJobAtIndex(queue, indexToDelete)
-	}
-
-	c.queues[queueName] = queue
-	return result, nil
+	return nil, nil
 }
 
-//deleteJobAtIndex removes the given index from the job queue, does not memory leak
+//deleteJobAtIndex removes the given index from the job queue, cleans up memory during delete
 func (c *Controller) deleteJobAtIndex(queue *models.Queue, i int) {
 	queueLenMinus := len(queue.Jobs) - 1
 	if i < (queueLenMinus) {

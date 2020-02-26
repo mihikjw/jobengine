@@ -43,8 +43,10 @@ func TestLoadFromFile1(t *testing.T) {
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: nil,
 			UnmarshalOutput: map[interface{}]interface{}{
-				"version": 1,
-				"port":    6010,
+				"version":             1,
+				"port":                6010,
+				"job_keep_minutes":    30,
+				"job_timeout_minutes": 30,
 				"queues": map[interface{}]interface{}{
 					"test_queue_1": map[interface{}]interface{}{
 						"read":  []interface{}{"service1", "service2"},
@@ -57,6 +59,7 @@ func TestLoadFromFile1(t *testing.T) {
 				},
 			},
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 
 	result, err := loader.LoadFromFile(1.0)
@@ -88,8 +91,10 @@ func TestLoadFromFile2(t *testing.T) {
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: nil,
 			UnmarshalOutput: map[interface{}]interface{}{
-				"version": 1.0,
-				"port":    6010,
+				"version":             1.0,
+				"port":                6010,
+				"job_keep_minutes":    30,
+				"job_timeout_minutes": 30,
 				"queues": map[interface{}]interface{}{
 					"test_queue_1": map[interface{}]interface{}{
 						"read":  []interface{}{"service1", "service2"},
@@ -102,6 +107,7 @@ func TestLoadFromFile2(t *testing.T) {
 				},
 			},
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 
 	result, err := loader.LoadFromFile(1.0)
@@ -133,6 +139,7 @@ func TestLoadFromFile3(t *testing.T) {
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: fmt.Errorf("Test Error"),
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 	_, err := loader.LoadFromFile(1.0)
 	if err == nil {
@@ -151,6 +158,7 @@ func TestLoadFromFile4(t *testing.T) {
 			ReadFileErrorResult:   fmt.Errorf("Test Error"),
 			GetEnvResult:          "testsecret",
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 
 	_, err := loader.LoadFromFile(1.0)
@@ -168,6 +176,7 @@ func TestLoadFromFile5(t *testing.T) {
 			FileExistsErrorResult: fmt.Errorf("Test Error"),
 			GetEnvResult:          "testsecret",
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 
 	_, err := loader.LoadFromFile(1.0)
@@ -190,8 +199,10 @@ func TestLoadFromFile6(t *testing.T) {
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: nil,
 			UnmarshalOutput: map[interface{}]interface{}{
-				"version": "1.0",
-				"port":    6010,
+				"version":             "1.0",
+				"port":                6010,
+				"job_keep_minutes":    30,
+				"job_timeout_minutes": 30,
 				"queues": map[interface{}]interface{}{
 					"test_queue_1": map[interface{}]interface{}{
 						"read":  []interface{}{"service1", "service2"},
@@ -204,6 +215,7 @@ func TestLoadFromFile6(t *testing.T) {
 				},
 			},
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 
 	_, err := loader.LoadFromFile(1.0)
@@ -226,8 +238,10 @@ func TestLoadFromFile7(t *testing.T) {
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: nil,
 			UnmarshalOutput: map[interface{}]interface{}{
-				"version": 2.0,
-				"port":    6010,
+				"version":             2.0,
+				"port":                6010,
+				"job_keep_minutes":    30,
+				"job_timeout_minutes": 30,
 				"queues": map[interface{}]interface{}{
 					"test_queue_1": map[interface{}]interface{}{
 						"read":  []interface{}{"service1", "service2"},
@@ -240,6 +254,7 @@ func TestLoadFromFile7(t *testing.T) {
 				},
 			},
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 
 	_, err := loader.LoadFromFile(1.0)
@@ -262,8 +277,10 @@ func TestLoadFromFile8(t *testing.T) {
 		cfgParser: &MockYAMLHandler{
 			UnmarshalResult: nil,
 			UnmarshalOutput: map[interface{}]interface{}{
-				"version": 2.0,
-				"port":    6010,
+				"version":             2.0,
+				"port":                6010,
+				"job_keep_minutes":    30,
+				"job_timeout_minutes": 30,
 				"queues": map[interface{}]interface{}{
 					"test_queue_1": map[interface{}]interface{}{
 						"read":  []interface{}{"service1", "service2"},
@@ -276,6 +293,7 @@ func TestLoadFromFile8(t *testing.T) {
 				},
 			},
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 
 	_, err := loader.LoadFromFile(1.0)
@@ -290,6 +308,8 @@ func BenchmarkLoadFromFile(b *testing.B) {
 	mockValidCfgFile := []byte(`
    version: 1
    port: 6010
+   job_keep_minutes: 30
+   job_timeout_minutes: 30
    queues:
       test_queue_1:
          read:
@@ -313,6 +333,7 @@ func BenchmarkLoadFromFile(b *testing.B) {
 			GetEnvResult:          "testsecret",
 		},
 		cfgParser: NewConfigParser("yaml"),
+		hasher:    NewHashProcessor("md5"),
 	}
 
 	for i := 0; i < b.N; i++ {
@@ -334,6 +355,7 @@ func TestWriteFile1(t *testing.T) {
 			MarshalByteResult:  []byte{69, 45, 32},
 			MarshalErrorResult: nil,
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 	cfg := &models.Config{
 		Version: 1.0,
@@ -360,6 +382,7 @@ func TestWriteFile2(t *testing.T) {
 			FileExistsErrorResult: nil,
 			DeleteFileResult:      fmt.Errorf("Test Error"),
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 	cfg := &models.Config{
 		Version: 1.0,
@@ -385,6 +408,7 @@ func TestWriteFile3(t *testing.T) {
 			FileExistsBoolResult:  false,
 			FileExistsErrorResult: fmt.Errorf("Test Error"),
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 	cfg := &models.Config{
 		Version: 1.0,
@@ -414,6 +438,7 @@ func TestWriteFile4(t *testing.T) {
 			MarshalByteResult:  nil,
 			MarshalErrorResult: fmt.Errorf("Test Error"),
 		},
+		hasher: NewHashProcessor("md5"),
 	}
 
 	if err := loader.SaveToFile(nil); err == nil {

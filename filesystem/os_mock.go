@@ -1,5 +1,7 @@
 package filesystem
 
+import "os"
+
 //MockFileSystem is a mock class for the interface FileSystem
 type MockFileSystem struct {
 	FileExistsBoolResult  bool
@@ -9,6 +11,8 @@ type MockFileSystem struct {
 	ReadFileErrorResult   error
 	WiteFileResult        error
 	GetEnvResult          string
+	OpenResult            *os.File
+	OpenError             error
 }
 
 //FileExists returns values from the struct
@@ -34,4 +38,9 @@ func (fs *MockFileSystem) WriteFile(filepath string, data []byte) error {
 //GetEnv returns values from the struct
 func (fs *MockFileSystem) GetEnv(name string) string {
 	return fs.GetEnvResult
+}
+
+//Open returns
+func (fs *MockFileSystem) Open(filepath string) (*os.File, error) {
+	return fs.OpenResult, fs.OpenError
 }

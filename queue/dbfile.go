@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/MichaelWittgreffe/jobengine/filesystem"
+	"github.com/MichaelWittgreffe/jobengine/logger"
 )
 
 //DBFile represents the encrypted file holding persistent queue data
@@ -101,7 +102,7 @@ func (db *DBFile) SaveToFile() error {
 }
 
 //Monitor is a goroutine to write the DBFile to disk when requested to
-func (db *DBFile) Monitor(write chan bool) {
+func (db *DBFile) Monitor(write chan bool, logger logger.Logger) {
 	for true {
 		select {
 		case writeFlag, open := <-write:
@@ -110,11 +111,11 @@ func (db *DBFile) Monitor(write chan bool) {
 					write <- false //reset flag before write
 
 					if err := db.SaveToFile(); err != nil {
-						fmt.Printf("Error Saving DB File: %s\n", err.Error())
+						logger.Error(fmt.Sprintf("Error Saving DB File: %s\n", err.Error()))
 					}
 				}
 			} else {
-				fmt.Println("DBFile Write Channel Closed")
+				logger.Error("DBFile Write Channel Closed")
 			}
 		}
 	}

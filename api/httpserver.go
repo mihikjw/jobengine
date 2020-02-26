@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/MichaelWittgreffe/jobengine/logger"
 	"github.com/MichaelWittgreffe/jobengine/models"
 	"github.com/MichaelWittgreffe/jobengine/queue"
 	"github.com/gin-gonic/gin"
@@ -15,15 +16,17 @@ type HTTPServer struct {
 	write      chan bool
 	router     *gin.Engine
 	json       queue.JSONHandler
+	log        logger.Logger
 }
 
 //NewHTTPServer creates a new instance of HTTPServer
-func NewHTTPServer(con *queue.Controller, write chan bool) *HTTPServer {
+func NewHTTPServer(con *queue.Controller, write chan bool, logger logger.Logger) *HTTPServer {
 	result := &HTTPServer{
 		controller: con,
 		write:      write,
 		router:     gin.Default(),
 		json:       new(queue.JSONHandle),
+		log:        logger,
 	}
 
 	public := result.router.Group("/api/v1")
@@ -50,34 +53,41 @@ func (s *HTTPServer) test(gc *gin.Context) {
 func (s *HTTPServer) createJob(gc *gin.Context) {
 	appName, queueName, err := GetNameAndQueueFromContext(gc)
 	if err != nil {
-		gc.AbortWithError(http.StatusBadRequest, err)
+		s.log.Error(err.Error())
+		gc.Status(http.StatusBadRequest)
+		return
 	}
 
 	requestBody, err := GetJSONBody(gc)
 	if err != nil {
-		gc.AbortWithError(http.StatusBadRequest, err)
+		s.log.Error(err.Error())
+		gc.Status(http.StatusBadRequest)
 		return
 	}
 
 	queueFound, _, writeAllowed := s.controller.QueueExists(queueName, appName)
 	if !queueFound {
-		gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Queue %s Not Found", queueName))
+		s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
+		gc.Status(http.StatusNotFound)
 		return
 	}
 	if !writeAllowed {
-		gc.AbortWithError(http.StatusForbidden, fmt.Errorf("Permission Denied For Write To Queue %s", queueName))
+		s.log.Error(fmt.Sprintf("Permission Denied For Write To Queue %s", queueName))
+		gc.Status(http.StatusNotFound)
 		return
 	}
 
 	job, err := CreateJobFromBody(requestBody)
 	if err != nil {
-		gc.AbortWithError(http.StatusBadRequest, err)
+		s.log.Error(err.Error())
+		gc.Status(http.StatusBadRequest)
 		return
 	}
 
 	err = s.controller.AddNewJob(queueName, job)
 	if err != nil {
-		gc.AbortWithError(http.StatusInternalServerError, fmt.Errorf("Error Adding Job: %s", err.Error()))
+		s.log.Error(fmt.Sprintf("Error Adding Job: %s", err.Error()))
+		gc.Status(http.StatusInternalServerError)
 		return
 	}
 
@@ -100,21 +110,26 @@ func (s *HTTPServer) createJob(gc *gin.Context) {
 func (s *HTTPServer) getNextjob(gc *gin.Context) {
 	appName, queueName, err := GetNameAndQueueFromContext(gc)
 	if err != nil {
-		gc.AbortWithError(http.StatusBadRequest, err)
+		s.log.Error(err.Error())
+		gc.Status(http.StatusBadRequest)
+		return
 	}
 
 	queueFound, readAllowed, _ := s.controller.QueueExists(queueName, appName)
 	if !queueFound {
-		gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Queue %s Not Found", queueName))
+		s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
+		gc.Status(http.StatusNotFound)
 		return
 	}
 	if !readAllowed {
-		gc.AbortWithError(http.StatusForbidden, fmt.Errorf("Permission Denied For Read From Queue %s", queueName))
+		s.log.Error(fmt.Sprintf("Permission Denied For Read From Queue %s", queueName))
+		gc.Status(http.StatusForbidden)
 		return
 	}
 
 	if err := s.controller.UpdateQueue(queueName); err != nil {
-		gc.AbortWithError(http.StatusInternalServerError, err)
+		s.log.Error(err.Error())
+		gc.Status(http.StatusInternalServerError)
 		return
 	}
 
@@ -122,10 +137,12 @@ func (s *HTTPServer) getNextjob(gc *gin.Context) {
 	s.write <- true
 
 	if err != nil {
-		gc.AbortWithError(http.StatusInternalServerError, fmt.Errorf("Error Getting Next Job: %s", err.Error()))
+		s.log.Error(fmt.Sprintf("Error Getting Next Job: %s", err.Error()))
+		gc.Status(http.StatusInternalServerError)
 		return
 	} else if job == nil {
-		gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Queue %s Not Found", queueName))
+		s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
+		gc.Status(http.StatusNotFound)
 		return
 	}
 
@@ -137,24 +154,31 @@ func (s *HTTPServer) getNextjob(gc *gin.Context) {
 func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
 	appName, queueName, err := GetNameAndQueueFromContext(gc)
 	if err != nil {
-		gc.AbortWithError(http.StatusBadRequest, err)
+		s.log.Error(err.Error())
+		gc.Status(http.StatusBadRequest)
+		return
 	}
 
 	statusFilter := gc.GetHeader("X-Status-Filter")
 
 	queueFound, readAllowed, _ := s.controller.QueueExists(queueName, appName)
 	if !queueFound {
-		gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Queue %s Not Found", queueName))
+		s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
+		gc.Status(http.StatusNotFound)
 		return
 	}
 	if !readAllowed {
-		gc.AbortWithError(http.StatusForbidden, fmt.Errorf("Permission Denied For Read From Queue %s", queueName))
+		s.log.Error(fmt.Sprintf("Permission Denied For Read From Queue %s", queueName))
+		gc.Status(http.StatusForbidden)
 		return
 	}
 
 	if err := s.controller.UpdateQueue(queueName); err != nil {
-		gc.AbortWithError(http.StatusInternalServerError, err)
-		return
+		if err != nil {
+			s.log.Error(err.Error())
+			gc.Status(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	//write the changes in UpdateQueue
@@ -162,10 +186,12 @@ func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
 
 	jobs, err := s.controller.ExportQueue(queueName, statusFilter)
 	if err != nil {
-		gc.AbortWithError(http.StatusInternalServerError, fmt.Errorf("Error Getting Jobs: %s", err.Error()))
+		s.log.Error(fmt.Sprintf("Error Getting Jobs: %s", err.Error()))
+		gc.Status(http.StatusInternalServerError)
 		return
 	} else if jobs == nil {
-		gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Queue %s Not Found", queueName))
+		s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
+		gc.Status(http.StatusNotFound)
 		return
 	}
 
@@ -175,28 +201,34 @@ func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
 func (s *HTTPServer) updateJob(gc *gin.Context) {
 	jobUID := gc.Param("uid")
 	if len(jobUID) <= 0 {
-		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("No UID Supplied"))
+		s.log.Error("No UID Supplied")
+		gc.Status(http.StatusBadRequest)
 		return
 	}
 
 	appName, queueName, err := GetNameAndQueueFromContext(gc)
 	if err != nil {
-		gc.AbortWithError(http.StatusBadRequest, err)
+		s.log.Error(err.Error())
+		gc.Status(http.StatusBadRequest)
+		return
 	}
 
 	queueFound, _, writeAllowed := s.controller.QueueExists(queueName, appName)
 	if !queueFound {
-		gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Queue %s Not Found", queueName))
+		s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
+		gc.Status(http.StatusNotFound)
 		return
 	}
 	if !writeAllowed {
-		gc.AbortWithError(http.StatusForbidden, fmt.Errorf("Permission Denied For Write To Queue %s", queueName))
+		s.log.Error(fmt.Sprintf("Permission Denied For Write To Queue %s", queueName))
+		gc.Status(http.StatusForbidden)
 		return
 	}
 
 	requestBody, err := GetJSONBody(gc)
 	if err != nil {
-		gc.AbortWithError(http.StatusBadRequest, err)
+		s.log.Error(err.Error())
+		gc.Status(http.StatusBadRequest)
 		return
 	}
 
@@ -219,17 +251,20 @@ func (s *HTTPServer) updateJob(gc *gin.Context) {
 
 	state, found := requestBody["status"].(string)
 	if found && (state != models.Complete && state != models.Failed && state != models.Inprogress && state != models.Queued) {
-		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Invalid Status Requested: %s", state))
+		s.log.Error(fmt.Sprintf("Invalid Status Requested: %s", state))
+		gc.Status(http.StatusBadRequest)
 		return
 	}
 
 	err = s.controller.UpdateJob(queueName, jobUID, state, content, timeoutTime, priority)
 	if err != nil {
 		if err.Error() == "Not Found" {
-			gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Job %s Not Found In Queue %s", jobUID, queueName))
+			s.log.Error(fmt.Sprintf("Job %s Not Found In Queue %s", jobUID, queueName))
+			gc.Status(http.StatusNotFound)
 			return
 		}
-		gc.AbortWithError(http.StatusInternalServerError, fmt.Errorf("Error Updating Job %s For Queue %s: %s", jobUID, queueName, err.Error()))
+		s.log.Error(fmt.Sprintf("Error Updating Job %s For Queue %s: %s", jobUID, queueName, err.Error()))
+		gc.Status(http.StatusInternalServerError)
 		return
 	}
 

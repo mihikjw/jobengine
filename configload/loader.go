@@ -52,7 +52,13 @@ func (l *ConfigLoad) LoadFromFile(version float64) (*models.Config, error) {
 		return nil, err
 	}
 
-	return l.parseConfig(configFile)
+	cfg, err := l.parseConfig(configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.CryptoSecret = hashedSecret
+	return cfg, nil
 }
 
 //parseConfig takes the loaded raw YAML cfg data and parses it into the models.Config struct

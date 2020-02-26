@@ -13,32 +13,33 @@ const version float64 = 1.0
 const defaultPort int = 6006
 
 //LoadConfig loads the given config and returns it
-func LoadConfig(cfgPath, loaderType string) (*models.Config, error) {
-	var cfg *models.Config
-	var err error
+func LoadConfig(loader ConfigLoader) (*models.Config, error) {
+	if loader == nil {
+		return nil, fmt.Errorf("Invalid Arg")
+	}
 
-	if loader := NewConfigLoader(cfgPath, loaderType); loader != nil {
-		if cfg, err = loader.LoadFromFile(version); err == nil {
-			return cfg, nil
-		} else if err.Error() == "Not Found" {
-			cfg = &models.Config{
-				Version:           version,
-				Port:              defaultPort,
-				Queues:            make(map[string]*models.QueuePermissions),
-				JobTimeoutMinutes: 10,
-				JobKeepMinutes:    60,
-				CryptoSecret:      "32BYTESTRING_GKYTEBJ784GIRJAQP80",
-			}
+	cfg, err := loader.LoadFromFile(version)
 
-			if err = loader.SaveToFile(cfg); err != nil {
-				return nil, fmt.Errorf("Failed To Save Default Cfg: %s", err.Error())
-			}
-
-			return cfg, nil
-		}
-	} else {
-		err = fmt.Errorf("Unable To Create ConfigLoader")
+	if err == nil {
+		return cfg, nil
+	} else if err.Error() == "Not Found" {
+		return createDefaultCfg(cfg, loader)
 	}
 
 	return nil, err
+}
+
+//createDefaultCfg generates and saves to file a default config for the application
+func createDefaultCfg(in *models.Config, loader ConfigLoader) (*models.Config, error) {
+	in.Version = version
+	in.Port = defaultPort
+	in.Queues = make(map[string]*models.QueuePermissions)
+	in.JobKeepMinutes = 60
+	in.JobTimeoutMinutes = 60
+
+	if err := loader.SaveToFile(in); err != nil {
+		return nil, fmt.Errorf("Failed To Save Default Cfg: %s", err.Error())
+	}
+
+	return in, nil
 }

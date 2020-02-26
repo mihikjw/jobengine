@@ -22,7 +22,7 @@ func main() {
 		dbPath = "/jobengine/database.queuedb"
 	}
 
-	cfg, err := configload.LoadConfig(configPath, "os")
+	cfg, err := configload.LoadConfig(configload.NewConfigLoader(configPath, "os"))
 	if err != nil {
 		quit(err)
 	}

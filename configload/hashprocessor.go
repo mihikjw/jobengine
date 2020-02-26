@@ -95,3 +95,21 @@ func (p *HashProcess) Process(in string) (string, error) {
 
 	return hex.EncodeToString(hashBytes), nil
 }
+
+//MockHashProcess is a mock struct for the HashProcessor interface
+type MockHashProcess struct {
+	ProcessFileResult string
+	ProcessFileError  error
+	ProcessResult     string
+	ProcessError      error
+}
+
+//ProcessFile returns mock struct values
+func (p *MockHashProcess) ProcessFile(filepath string) (string, error) {
+	return p.ProcessFileResult, p.ProcessFileError
+}
+
+//Process returns mock struct values
+func (p *MockHashProcess) Process(in string) (string, error) {
+	return p.ProcessResult, p.ProcessError
+}

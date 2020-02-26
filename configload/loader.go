@@ -31,9 +31,15 @@ func NewConfigLoader(filepath, fsType string) ConfigLoader {
 
 //LoadFromFile loads the setup config file into memory
 func (l *ConfigLoad) LoadFromFile(version float64) (*models.Config, error) {
+	hashedSecret, err := l.getSecretFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	exists, err := l.fileHandler.FileExists(l.filePath)
 	if !exists {
-		return nil, fmt.Errorf("Not Found")
+		//return an incomplete config, only containing ENV data
+		return &models.Config{CryptoSecret: hashedSecret}, fmt.Errorf("Not Found")
 	}
 
 	rawFileContent, err := l.fileHandler.ReadFile(l.filePath)
@@ -52,18 +58,6 @@ func (l *ConfigLoad) LoadFromFile(version float64) (*models.Config, error) {
 //parseConfig takes the loaded raw YAML cfg data and parses it into the models.Config struct
 func (l *ConfigLoad) parseConfig(configFile map[interface{}]interface{}) (*models.Config, error) {
 	result := new(models.Config)
-
-	tmpCryptoSecret := l.fileHandler.GetEnv("SECRET")
-	if len(tmpCryptoSecret) <= 0 {
-		return nil, fmt.Errorf("Env Var SECRET Is Empty Or Not Found")
-	}
-
-	//ensures secret is always 32-bytes in length
-	var err error
-	result.CryptoSecret, err = l.hasher.Process(tmpCryptoSecret)
-	if err != nil {
-		return nil, fmt.Errorf("Error Hashing Secret: %s", err.Error())
-	}
 
 	switch tempVersion := configFile["version"].(type) {
 	case float64:
@@ -99,6 +93,10 @@ func (l *ConfigLoad) parseConfig(configFile map[interface{}]interface{}) (*model
 
 //SaveToFile saves the given config to file
 func (l *ConfigLoad) SaveToFile(cfg *models.Config) error {
+	if cfg == nil {
+		return fmt.Errorf("Invalid Arg")
+	}
+
 	if exists, err := l.fileHandler.FileExists(l.filePath); exists {
 		if err := l.fileHandler.DeleteFile(l.filePath); err != nil {
 			return fmt.Errorf("Unable To Delete Cfg: %s", err.Error())
@@ -107,7 +105,15 @@ func (l *ConfigLoad) SaveToFile(cfg *models.Config) error {
 		return fmt.Errorf("Error Locating Config File: %s", err.Error())
 	}
 
-	outputData, err := l.cfgParser.Marshal(cfg)
+	configMap := map[string]interface{}{
+		"version":             cfg.Version,
+		"port":                cfg.Port,
+		"job_keep_minutes":    cfg.JobKeepMinutes,
+		"job_timeout_minutes": cfg.JobTimeoutMinutes,
+		"queues":              cfg.Queues,
+	}
+
+	outputData, err := l.cfgParser.Marshal(configMap)
 	if err != nil {
 		return err
 	}
@@ -126,4 +132,19 @@ func (l *ConfigLoad) interfaceSliceToStringSlice(input []interface{}) []string {
 	}
 
 	return output
+}
+
+//getSecretFromEnv gets the configured secret, hashes it to the correct length and returns
+func (l *ConfigLoad) getSecretFromEnv() (string, error) {
+	tmpCryptoSecret := l.fileHandler.GetEnv("SECRET")
+	if len(tmpCryptoSecret) <= 0 {
+		return "", fmt.Errorf("Env Var SECRET Is Empty Or Not Found")
+	}
+
+	hashedSecret, err := l.hasher.Process(tmpCryptoSecret)
+	if err != nil {
+		return "", fmt.Errorf("Error Hashing Secret: %s", err.Error())
+	}
+
+	return hashedSecret, nil
 }

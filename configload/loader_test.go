@@ -302,6 +302,48 @@ func TestLoadFromFile8(t *testing.T) {
 	}
 }
 
+//TestLoadFromFile9 unable to perform an MD5 hash on the secret
+func TestLoadFromFile9(t *testing.T) {
+	loader := ConfigLoad{
+		filePath: "test_file_1.yml",
+		fileHandler: &filesystem.MockFileSystem{
+			FileExistsBoolResult:  true,
+			FileExistsErrorResult: nil,
+			ReadFileByteResult:    []byte{118, 69, 45},
+			ReadFileErrorResult:   nil,
+			GetEnvResult:          "testsecret",
+		},
+		cfgParser: &MockYAMLHandler{
+			UnmarshalResult: nil,
+			UnmarshalOutput: map[interface{}]interface{}{
+				"version":             2.0,
+				"port":                6010,
+				"job_keep_minutes":    30,
+				"job_timeout_minutes": 30,
+				"queues": map[interface{}]interface{}{
+					"test_queue_1": map[interface{}]interface{}{
+						"read":  []interface{}{"service1", "service2"},
+						"write": []interface{}{"service3"},
+					},
+					"test_queue_2": map[interface{}]interface{}{
+						"read":  []interface{}{"service1"},
+						"write": []interface{}{"service2"},
+					},
+				},
+			},
+		},
+		hasher: &MockHashProcess{
+			ProcessResult: "",
+			ProcessError:  fmt.Errorf("Test Error"),
+		},
+	}
+
+	_, err := loader.LoadFromFile(1.0)
+	if err == nil {
+		t.Error("TestLoadFromFile9 Did Not Return Error")
+	}
+}
+
 /*BenchmarkLoadFromFile benchmarks loading a valid YAML config file - this gives an indication of time
 taken to parse the YAML, it also uses an actual YAML file []byte rather than mocked */
 func BenchmarkLoadFromFile(b *testing.B) {
@@ -341,8 +383,8 @@ func BenchmarkLoadFromFile(b *testing.B) {
 	}
 }
 
-//TestWriteFile1 succesfully writes the given config to file
-func TestWriteFile1(t *testing.T) {
+//TestSaveToFile1 succesfully writes the given config to file
+func TestSaveToFile1(t *testing.T) {
 	loader := ConfigLoad{
 		filePath: "test_file_1.yml",
 		fileHandler: &filesystem.MockFileSystem{
@@ -369,12 +411,12 @@ func TestWriteFile1(t *testing.T) {
 	}
 
 	if err := loader.SaveToFile(cfg); err != nil {
-		t.Errorf("TestWriteFile1 Failed: %s", err.Error())
+		t.Errorf("TestSaveToFile1 Failed: %s", err.Error())
 	}
 }
 
-//TestWriteFile2 is unable to delete the existing config before re-writing
-func TestWriteFile2(t *testing.T) {
+//TestSaveToFile2 is unable to delete the existing config before re-writing
+func TestSaveToFile2(t *testing.T) {
 	loader := ConfigLoad{
 		filePath: "test_file_1.yml",
 		fileHandler: &filesystem.MockFileSystem{
@@ -396,12 +438,12 @@ func TestWriteFile2(t *testing.T) {
 	}
 
 	if err := loader.SaveToFile(cfg); err == nil {
-		t.Errorf("TestWriteFile2 Did Not Return An Error")
+		t.Errorf("TestSaveToFile2 Did Not Return An Error")
 	}
 }
 
-//TestWriteFile3 encounters an error checking if the config exists before deciding to delete/write
-func TestWriteFile3(t *testing.T) {
+//TestSaveToFile3 encounters an error checking if the config exists before deciding to delete/write
+func TestSaveToFile3(t *testing.T) {
 	loader := ConfigLoad{
 		filePath: "test_file_1.yml",
 		fileHandler: &filesystem.MockFileSystem{
@@ -422,12 +464,12 @@ func TestWriteFile3(t *testing.T) {
 	}
 
 	if err := loader.SaveToFile(cfg); err == nil {
-		t.Errorf("TestWriteFile3 Did Not Return An Error")
+		t.Errorf("TestSaveToFile3 Did Not Return An Error")
 	}
 }
 
-//TestWriteFile4 encounters an error marshalling the config to YAML
-func TestWriteFile4(t *testing.T) {
+//TestSaveToFile4 gives invalid argument to method
+func TestSaveToFile4(t *testing.T) {
 	loader := ConfigLoad{
 		filePath: "test_file_1.yml",
 		fileHandler: &filesystem.MockFileSystem{
@@ -442,6 +484,36 @@ func TestWriteFile4(t *testing.T) {
 	}
 
 	if err := loader.SaveToFile(nil); err == nil {
-		t.Errorf("TestWriteFile4 Did Not Return An Error")
+		t.Errorf("TestSaveToFile4 Did Not Return An Error")
+	}
+}
+
+//TestSaveToFile5 has an error marshalling to YAML
+func TestSaveToFile5(t *testing.T) {
+	loader := ConfigLoad{
+		filePath: "test_file_1.yml",
+		fileHandler: &filesystem.MockFileSystem{
+			FileExistsBoolResult:  false,
+			FileExistsErrorResult: nil,
+		},
+		cfgParser: &MockYAMLHandler{
+			MarshalByteResult:  nil,
+			MarshalErrorResult: fmt.Errorf("Test Error"),
+		},
+		hasher: NewHashProcessor("md5"),
+	}
+	cfg := &models.Config{
+		Version: 1.0,
+		Port:    6006,
+		Queues: map[string]*models.QueuePermissions{
+			"test_queue_1": &models.QueuePermissions{
+				Read:  []string{"service1", "service2"},
+				Write: []string{"service3"},
+			},
+		},
+	}
+
+	if err := loader.SaveToFile(cfg); err == nil {
+		t.Errorf("TestSaveToFile5 Did Not Return An Error")
 	}
 }

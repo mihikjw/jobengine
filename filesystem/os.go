@@ -31,7 +31,6 @@ func (o *OperatingSystem) ReadFile(filepath string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return rawFileContent, nil
 }
 
@@ -40,7 +39,6 @@ func (o *OperatingSystem) WriteFile(filepath string, data []byte) error {
 	if len(filepath) <= 0 || len(data) <= 0 {
 		return fmt.Errorf("Invalid Args")
 	}
-
 	return ioutil.WriteFile(filepath, data, 0644)
 }
 

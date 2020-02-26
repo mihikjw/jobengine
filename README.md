@@ -1,6 +1,6 @@
 # JobEngine
 
-JobEngine is a 'job-queue', a queue system allowing multiple applications to dynamically create and read 'job queues', whilst crucially being able to mark jobs as 'in-progress', 'failed' or 'complete', as well as give them a timeout window (process within this time, else delete). The queue is also persistent across application restarts and provides a loose permissions system, only allowing certian functionality to certian application names (e.g. only appA can push to queueX & only appB can read)
+JobEngine is a 'job-queue', a job queuing system allowing multiple applications to dynamically create and read 'job queues', whilst crucially being able to mark jobs as 'inprogress', 'failed' or 'complete', as well as give them a timeout window (process within this time, else delete). The queue is also persistent across application restarts and provides a loose permissions system, only allowing certian functionality to certian application names (e.g. only appA can push to queueX & only appB can read).
 
 ## Build
 1. ```go get https://github.com/MichaelWittgreffe/jobengine```
@@ -8,8 +8,6 @@ JobEngine is a 'job-queue', a queue system allowing multiple applications to dyn
 3. ```make```
 
 ## TO DO:
-- REFACTOR!
-- Add Read/Update Status/Delete to Jobs
 - Add Create, Read, Delete to queues
     - Add goroutine to monitor config updates
 

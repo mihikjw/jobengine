@@ -9,7 +9,9 @@
             "program": "${workspaceFolder}/main.go",
             "env": {
                 "SECRET": "hello_world",
-                "GIN_MODE": "debug"
+                "GIN_MODE": "release",
+                "CONFIG_PATH": "./examples/config.yml",
+                "DB_PATH": "./examples/queues.queuedb"
             },
             "args": []
         }

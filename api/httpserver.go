@@ -27,11 +27,11 @@ func NewHTTPServer(con *queue.Controller, write chan bool) *HTTPServer {
 	}
 
 	public := result.router.Group("/api/v1")
-	public.GET("/test", result.test)
-	public.PUT("/jobs/create", result.createJob)
-	public.GET("/jobs/next", result.getNextjob)
-	public.GET("/jobs", result.getJobsAtStatus)
-	public.POST("/jobs/:uid", result.updateJob)
+	public.GET("/test", result.test)             //test endpoint
+	public.PUT("/jobs/create", result.createJob) //create job
+	public.GET("/jobs/next", result.getNextjob)  //get next queued job
+	public.GET("/jobs", result.getJobsAtStatus)  //get all jobs at status
+	public.POST("/jobs/:uid", result.updateJob)  //update job
 	return result
 }
 
@@ -82,7 +82,18 @@ func (s *HTTPServer) createJob(gc *gin.Context) {
 	}
 
 	s.write <- true
-	gc.Status(http.StatusCreated)
+
+	result := map[string]interface{}{
+		"uid":          job.UID,
+		"content":      job.Content,
+		"state":        job.State,
+		"last_updated": job.LastUpdated,
+		"created":      job.Created,
+		"timeout_time": job.TimeoutTime,
+		"priority":     job.Priority,
+	}
+
+	gc.JSON(http.StatusCreated, result)
 }
 
 //getNextJob is a handler for requests to /api/v1/jobs/next, returns the next job in the queue and marks as 'Inprogress'

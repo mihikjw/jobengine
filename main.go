@@ -6,18 +6,24 @@ import (
 
 	"github.com/MichaelWittgreffe/jobengine/api"
 	"github.com/MichaelWittgreffe/jobengine/configload"
-	"github.com/MichaelWittgreffe/jobengine/models"
 	"github.com/MichaelWittgreffe/jobengine/queue"
 )
 
-const configPath string = "./examples/config.yml"
-const dbPath string = "./examples/queues.queuedb"
-
 func main() {
-	var err error
-	var cfg *models.Config
+	configPath := os.Getenv("CONFIG_PATH")
+	if len(configPath) <= 0 {
+		fmt.Println("CONFIG_PATH Not Defined, Using Default")
+		configPath = "/jobengine/config.yml"
+	}
 
-	if cfg, err = configload.LoadConfig(configPath, "os"); err != nil {
+	dbPath := os.Getenv("DB_PATH")
+	if len(dbPath) <= 0 {
+		fmt.Println("DB_PATH Not Defined, Using Default")
+		dbPath = "/jobengine/database.queuedb"
+	}
+
+	cfg, err := configload.LoadConfig(configPath, "os")
+	if err != nil {
 		quit(err)
 	}
 
@@ -54,7 +60,7 @@ func main() {
 	quit(err)
 }
 
-//quit exits the program with an exit code and prints the error if there was one
+//quit exits the program with exit code 1 and prints the error if there was one
 func quit(err error) {
 	if err != nil {
 		fmt.Println(err.Error())

@@ -69,3 +69,18 @@ func JobToMap(in *models.Job) map[string]interface{} {
 	result["priority"] = in.Priority
 	return result
 }
+
+//GetNameAndQueueFromContext gets the appName and queueName from an incoming request
+func GetNameAndQueueFromContext(gc *gin.Context) (string, string, error) {
+	appName := gc.GetHeader("X-Name")
+	if len(appName) <= 0 {
+		return "", "", fmt.Errorf("Missing Header Field: X-Name")
+	}
+
+	queueName := gc.GetHeader("X-Queue")
+	if len(queueName) <= 0 {
+		return "", "", fmt.Errorf("Missing Header Field: X-Queue")
+	}
+
+	return appName, queueName, nil
+}

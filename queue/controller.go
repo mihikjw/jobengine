@@ -51,8 +51,32 @@ func NewControllerFromDB(cfg *models.Config, db *DBFile) (*Controller, error) {
 		return result, fmt.Errorf("Error Loading DB: %s", err.Error())
 	}
 
-	// any new queues in the config or removed queues should be resolved here
-	// if there's any differences, call db.SaveToFile() before returning
+	updated := false
+
+	//ensure cfg-defined queues exist in the DBFile
+	for queueName, queuePermissions := range cfg.Queues {
+		if _, found := db.controller.queues[queueName]; !found {
+			result.AddNewQueue(queueName, queuePermissions)
+			updated = true
+		}
+	}
+
+	//ensure any cfg-removed queues are removed from the DBFile, existing queues status's/timeouts are resolved
+	for queueName := range db.controller.queues {
+		if _, found := cfg.Queues[queueName]; !found {
+			result.DeleteQueue(queueName)
+			updated = true
+		} else {
+			result.UpdateQueue(queueName)
+			updated = true
+		}
+	}
+
+	if updated {
+		if err := db.SaveToFile(); err != nil {
+			return nil, fmt.Errorf("Failed To Write Cfg Updates To Disk: %s", err.Error())
+		}
+	}
 
 	return result, nil
 }
@@ -239,11 +263,16 @@ func (c *Controller) AddNewJob(queueName string, in *models.Job) error {
 	}
 
 	queue.Jobs = append(queue.Jobs, in)
-	sort.Slice(queue.Jobs, func(i, j int) bool {
-		return queue.Jobs[i].Priority > queue.Jobs[j].Priority
-	})
+	c.sortQueue(queue)
 	queue.Size++
 	return nil
+}
+
+//sortQueue orders the queue by priority, any other ordering should be maintained - must handle Lock outside of this function
+func (c *Controller) sortQueue(in *models.Queue) {
+	sort.Slice(in.Jobs, func(i, j int) bool {
+		return in.Jobs[i].Priority > in.Jobs[j].Priority
+	})
 }
 
 //interfaceSliceToStringSlice converts a slice of interface types to a slice of string types
@@ -338,4 +367,75 @@ func (c *Controller) deleteJobAtIndex(queue *models.Queue, i int) {
 	queue.Jobs[queueLenMinus] = nil
 	queue.Jobs = queue.Jobs[:queueLenMinus]
 	queue.Size = uint8(len(queue.Jobs))
+}
+
+//UpdateJob updates the given job in the given queue with the given details if there is a mismatch
+func (c *Controller) UpdateJob(queueName, uid, state string, content map[string]interface{}, timeoutTime int64, priority uint8) error {
+	if len(queueName) <= 0 || len(uid) <= 0 {
+		return fmt.Errorf("Invalid Args")
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	queue, found := c.queues[queueName]
+	if !found {
+		return fmt.Errorf("Queue %s Not Found", queueName)
+	}
+
+	for _, data := range queue.Jobs {
+		if data.UID == uid {
+			updated := false
+			if content != nil {
+				data.Content = content
+				updated = true
+			}
+			if timeoutTime > 0 {
+				data.TimeoutTime = timeoutTime
+				updated = true
+			}
+			if priority > 0 && priority <= 100 {
+				data.Priority = priority
+				updated = true
+			}
+			if len(state) > 0 {
+				data.State = state
+				updated = true
+			}
+			if updated {
+				data.LastUpdated = time.Now().Unix()
+			}
+			c.sortQueue(queue)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Not Found")
+}
+
+//DeleteQueue removes the given queueName from the store of queue
+func (c *Controller) DeleteQueue(queueName string) error {
+	if len(queueName) <= 0 {
+		return fmt.Errorf("Invalid Args")
+	}
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	queue, found := c.queues[queueName]
+	if !found {
+		//queue does not exist, return that it was deleted
+		return nil
+	}
+
+	//clean the memory before deleting the pointer from the queue
+	for _, job := range queue.Jobs {
+		if job != nil {
+			job = nil
+		}
+	}
+	queue = nil
+
+	delete(c.queues, queueName)
+	return nil
 }

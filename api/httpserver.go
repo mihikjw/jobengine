@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/MichaelWittgreffe/jobengine/models"
 	"github.com/MichaelWittgreffe/jobengine/queue"
 	"github.com/gin-gonic/gin"
 )
@@ -30,8 +31,7 @@ func NewHTTPServer(con *queue.Controller, write chan bool) *HTTPServer {
 	public.PUT("/jobs/create", result.createJob)
 	public.GET("/jobs/next", result.getNextjob)
 	public.GET("/jobs", result.getJobsAtStatus)
-	public.POST("/jobs/")
-
+	public.POST("/jobs/:uid", result.updateJob)
 	return result
 }
 
@@ -48,16 +48,9 @@ func (s *HTTPServer) test(gc *gin.Context) {
 
 //createJob is a handler for requests to /api/v1/jobs/create, creates a new job
 func (s *HTTPServer) createJob(gc *gin.Context) {
-	appName := gc.GetHeader("X-Name")
-	if len(appName) <= 0 {
-		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Missing Header Field: X-Name"))
-		return
-	}
-
-	queueName := gc.GetHeader("X-Queue")
-	if len(queueName) <= 0 {
-		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Missing Header Field: X-Queue"))
-		return
+	appName, queueName, err := GetNameAndQueueFromContext(gc)
+	if err != nil {
+		gc.AbortWithError(http.StatusBadRequest, err)
 	}
 
 	requestBody, err := GetJSONBody(gc)
@@ -94,16 +87,9 @@ func (s *HTTPServer) createJob(gc *gin.Context) {
 
 //getNextJob is a handler for requests to /api/v1/jobs/next, returns the next job in the queue and marks as 'Inprogress'
 func (s *HTTPServer) getNextjob(gc *gin.Context) {
-	appName := gc.GetHeader("X-Name")
-	if len(appName) <= 0 {
-		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Missing Header Field: X-Name"))
-		return
-	}
-
-	queueName := gc.GetHeader("X-Queue")
-	if len(queueName) <= 0 {
-		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Missing Header Field: X-Queue"))
-		return
+	appName, queueName, err := GetNameAndQueueFromContext(gc)
+	if err != nil {
+		gc.AbortWithError(http.StatusBadRequest, err)
 	}
 
 	queueFound, readAllowed, _ := s.controller.QueueExists(queueName, appName)
@@ -138,16 +124,9 @@ func (s *HTTPServer) getNextjob(gc *gin.Context) {
 
 //getJobsAtStatus is a handler for requests to /api/v1/jobs, returns all the jobs in the queue, optionally at the given status
 func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
-	appName := gc.GetHeader("X-Name")
-	if len(appName) <= 0 {
-		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Missing Header Field: X-Name"))
-		return
-	}
-
-	queueName := gc.GetHeader("X-Queue")
-	if len(queueName) <= 0 {
-		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Missing Header Field: X-Queue"))
-		return
+	appName, queueName, err := GetNameAndQueueFromContext(gc)
+	if err != nil {
+		gc.AbortWithError(http.StatusBadRequest, err)
 	}
 
 	statusFilter := gc.GetHeader("X-Status-Filter")
@@ -180,4 +159,69 @@ func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
 	}
 
 	gc.JSON(http.StatusOK, jobs["jobs"])
+}
+
+func (s *HTTPServer) updateJob(gc *gin.Context) {
+	jobUID := gc.Param("uid")
+	if len(jobUID) <= 0 {
+		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("No UID Supplied"))
+		return
+	}
+
+	appName, queueName, err := GetNameAndQueueFromContext(gc)
+	if err != nil {
+		gc.AbortWithError(http.StatusBadRequest, err)
+	}
+
+	queueFound, _, writeAllowed := s.controller.QueueExists(queueName, appName)
+	if !queueFound {
+		gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Queue %s Not Found", queueName))
+		return
+	}
+	if !writeAllowed {
+		gc.AbortWithError(http.StatusForbidden, fmt.Errorf("Permission Denied For Write To Queue %s", queueName))
+		return
+	}
+
+	requestBody, err := GetJSONBody(gc)
+	if err != nil {
+		gc.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	content, found := requestBody["content"].(map[string]interface{})
+	if !found {
+		content = nil
+	}
+
+	var timeoutTime int64 = 0
+	tempTimeoutTime, found := requestBody["timeout_time"].(int)
+	if found {
+		timeoutTime = int64(tempTimeoutTime)
+	}
+
+	var priority uint8 = 0
+	tempPriority, found := requestBody["priority"].(int)
+	if found {
+		priority = uint8(tempPriority)
+	}
+
+	state, found := requestBody["status"].(string)
+	if found && (state != models.Complete && state != models.Failed && state != models.Inprogress && state != models.Queued) {
+		gc.AbortWithError(http.StatusBadRequest, fmt.Errorf("Invalid Status Requested: %s", state))
+		return
+	}
+
+	err = s.controller.UpdateJob(queueName, jobUID, state, content, timeoutTime, priority)
+	if err != nil {
+		if err.Error() == "Not Found" {
+			gc.AbortWithError(http.StatusNotFound, fmt.Errorf("Job %s Not Found In Queue %s", jobUID, queueName))
+			return
+		}
+		gc.AbortWithError(http.StatusInternalServerError, fmt.Errorf("Error Updating Job %s For Queue %s: %s", jobUID, queueName, err.Error()))
+		return
+	}
+
+	s.write <- true
+	gc.Status(http.StatusOK)
 }

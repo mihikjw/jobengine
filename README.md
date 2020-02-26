@@ -25,7 +25,7 @@ JobEngine is a 'job-queue', a queue system allowing multiple applications to dyn
             - read
                 - next: yes
                 - all (optional: at status): yes
-            - update status: 
+            - update status: yes
             - delete: 
         - queues
             - create: 
@@ -37,5 +37,5 @@ JobEngine is a 'job-queue', a queue system allowing multiple applications to dyn
 - Configuration: yes
     - From file: yes
     - Encryption Key from env: yes
-        - SHA256 HASH THE KEY SO ITS ALWAYS 32-BYTES: 
+        - SHA256 HASH THE KEY SO ITS ALWAYS 32-BYTES: yes
     - Default (then write to file): yes

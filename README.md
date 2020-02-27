@@ -1,11 +1,53 @@
 # JobEngine
 
-JobEngine is a 'job-queue', a job queuing system allowing multiple applications to dynamically create and read 'job queues', whilst crucially being able to mark jobs as 'inprogress', 'failed' or 'complete', as well as give them a timeout window (process within this time, else delete). The queue is also persistent across application restarts and provides a loose permissions system, only allowing certian functionality to certian application names (e.g. only appA can push to queueX & only appB can read).
+JobEngine is a 'job-queue', a job queuing system allowing multiple applications to dynamically create and read 'job queues', whilst crucially being able to mark jobs as 'inprogress', 'failed' or 'complete', as well as give them a timeout window (process within this time, else delete). The queue is also persistent across application restarts and provides a loose permissions system, only allowing certian functionality to certian application names (e.g. only appA can push to queueX & only appB can read). 
+
+Jobs are persisted in an encrypted database file, this is encrypted with AES. Changes to jobs/queues are written to the database when a request is made to do so, this may include sorting the queue on requests that change the status of a job (such as GetNextJob). Further details are in the API documentation below.
 
 ## Build
 1. ```go get https://github.com/MichaelWittgreffe/jobengine```
 2. ```cd $GOPATH/github.com/MichaelWittgreffe/jobengine```
 3. ```make```
+
+## Configuration
+In the current version (0.0.1), all queue configuration is handled in a YAML config file. The default for this (and is generated if no config is supplied) is ```/jobengine/config.yml```, without any queues configured. The config file is used to define variables for the application including version, api port, job_keep_minutes, job_timeout_minutes and the queues. Please note that the config is king - if the queue configuration is changed, or a queue deleted, this is reflected in the database and this data is permenantly lost. Example config:
+
+``` yaml
+version: 1
+port: 6010
+job_keep_minutes: 60
+job_timeout_minutes: 10
+queues:
+  test_queue_1:
+    read:
+    - service1
+    - service2
+    write:
+    - service3
+  test_queue_2:
+    read:
+    - service3
+    write:
+    - service1
+    - service2
+```
+- version: the API mode of the application
+    - 1/1.0: HTTP/1.1
+- port: the port used to host the API
+- job_keep_minutes: the number of minutes to keep jobs that are complete/failed
+- job_timeout_minutes: the number of minutes any job can be at status 'inprogress' before being marked as 'failed' and affected by the job_keep_minutes variable
+- queues: define the applications queues
+    - queue_name: name of the queue
+        - read: array of arbitary service names that have read access to the queue
+        - write: array of arbitary service names that have write access to the queue
+
+Some variables are defined based on environment variables:
+- SECRET: key used to encrypt the database
+- GIN_MODE: 'release' or 'debug', modifies the logging level of the Gin framework, used as part of the HTTP/1.1 API
+- CONFIG_PATH: define a custom path for the config YAML file
+- DB_PATH: define a custom path for the encrypted database file (*.queuedb)
+
+The SECRET is used to encrypt/decrypt the database and as such if this is changed you will no-longer be able to use any existing database.
 
 ## API
 ### Test: GET /api/v1/test

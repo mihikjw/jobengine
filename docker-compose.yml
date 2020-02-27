@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: michaelwittgreffe:jobengine
+    image: michaelwittgreffe/jobengine:0.0.1
     environment:
       SECRET: hello_world
       GIN_MODE: release

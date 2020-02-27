@@ -41,7 +41,7 @@ failure:
 	exit 1
 
 docker-build:
-	docker build -t ${APPLICATION_PUBLISHER}:${APPLICATION_NAME} .
+	docker-compose build
 
 create-dir:
 	if ! [ -d ./bin ]; then mkdir bin; fi;

@@ -136,14 +136,21 @@ func (s *HTTPServer) getNextjob(gc *gin.Context) {
 	job, err := s.controller.GetNextJob(queueName)
 	s.write <- true
 
-	if err != nil {
-		s.log.Error(fmt.Sprintf("Error Getting Next Job: %s", err.Error()))
-		gc.Status(http.StatusInternalServerError)
-		return
-	} else if job == nil {
-		s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
-		gc.Status(http.StatusNotFound)
-		return
+	if err != nil || job == nil {
+		switch {
+		case err == nil && job == nil:
+			s.log.Info(fmt.Sprintf("No Queued Jobs For Queue %s", queueName))
+			gc.Status(http.StatusNoContent)
+			return
+		case err.Error() == "No Queue":
+			s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
+			gc.Status(http.StatusNotFound)
+			return
+		default:
+			s.log.Error(fmt.Sprintf("Error Getting Next Job: %s", err.Error()))
+			gc.Status(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	jobMap := JobToMap(job)
@@ -160,6 +167,14 @@ func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
 	}
 
 	statusFilter := gc.GetHeader("X-Status-Filter")
+
+	if len(statusFilter) > 0 {
+		if !s.validStatus(statusFilter) {
+			s.log.Error(fmt.Sprintf("Status %s Is Not Valid", statusFilter))
+			gc.Status(http.StatusBadRequest)
+			return
+		}
+	}
 
 	queueFound, readAllowed, _ := s.controller.QueueExists(queueName, appName)
 	if !queueFound {
@@ -250,7 +265,7 @@ func (s *HTTPServer) updateJob(gc *gin.Context) {
 	}
 
 	state, found := requestBody["status"].(string)
-	if found && (state != models.Complete && state != models.Failed && state != models.Inprogress && state != models.Queued) {
+	if found && !s.validStatus(state) {
 		s.log.Error(fmt.Sprintf("Invalid Status Requested: %s", state))
 		gc.Status(http.StatusBadRequest)
 		return
@@ -270,4 +285,12 @@ func (s *HTTPServer) updateJob(gc *gin.Context) {
 
 	s.write <- true
 	gc.Status(http.StatusOK)
+}
+
+//validStatus checks a status string to see if it is valid
+func (s *HTTPServer) validStatus(state string) bool {
+	if state == models.Complete || state == models.Failed || state == models.Inprogress || state == models.Queued {
+		return true
+	}
+	return false
 }

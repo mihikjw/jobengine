@@ -8,9 +8,7 @@ JobEngine is a 'job-queue', a job queuing system allowing multiple applications 
 3. ```make```
 
 ## TO DO
-
 ### Short Term
-- Logging
 - Add Job Delete endpoint
 - Add Create, Read, Delete to queues
     - Add goroutine to monitor config updates when a queue is added/deleted/modified

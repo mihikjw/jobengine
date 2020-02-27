@@ -344,7 +344,7 @@ func (c *Controller) GetNextJob(queueName string) (*models.Job, error) {
 
 	queue, found := c.queues[queueName]
 	if !found {
-		return nil, nil
+		return nil, fmt.Errorf("No Queue")
 	}
 
 	for _, job := range queue.Jobs {

@@ -1,8 +1,8 @@
 # JobEngine
 
-JobEngine is a 'job-queue', a job queuing system allowing multiple applications to dynamically create and read 'job queues', whilst crucially being able to mark jobs as 'inprogress', 'failed' or 'complete', as well as give them a timeout window (process within this time, else delete). The queue is also persistent across application restarts and provides a loose permissions system, only allowing certian functionality to certian application names (e.g. only appA can push to queueX & only appB can read). 
+JobEngine is a 'job-queue', a job queuing system allowing multiple applications to dynamically create and read 'job queues', whilst crucially being able to mark jobs as 'inprogress', 'failed' or 'complete', as well as give them a timeout window (process within this time, else delete). The queue is also persistent across application restarts and provides a loose permissions system, only allowing certain functionality to certain application names (e.g. only appA can push to queueX & only appB can read).
 
-Jobs are persisted in an encrypted database file, this is encrypted with AES. Changes to jobs/queues are written to the database when a request is made to do so, this may include sorting the queue on requests that change the status of a job (such as GetNextJob). Further details are in the API documentation below.
+Jobs are persisted in an encrypted database file, this is encrypted with AES. Changes to jobs/queues are written to the database when a request is made to do so, this may include sorting the queue for requests that change the status of a job (such as GetNextJob). Further details are in the API documentation below.
 
 ## Build
 1. ```go get https://github.com/MichaelWittgreffe/jobengine```
@@ -10,7 +10,7 @@ Jobs are persisted in an encrypted database file, this is encrypted with AES. Ch
 3. ```make```
 
 ## Configuration
-In the current version (0.0.1), all queue configuration is handled in a YAML config file. The default for this (and is generated if no config is supplied) is ```/jobengine/config.yml```, without any queues configured. The config file is used to define variables for the application including version, api port, job_keep_minutes, job_timeout_minutes and the queues. Please note that the config is king - if the queue configuration is changed, or a queue deleted, this is reflected in the database and this data is permenantly lost. Example config:
+In the current version (0.0.1), all queue configuration is handled in a YAML config file. The default for this (and is generated if no config is supplied) is ```/jobengine/config.yml```, without any queues configured. The config file is used to define variables for the application including version, api port, job_keep_minutes, job_timeout_minutes and the queues. Please note that the config is king - if the queue configuration is changed, or a queue deleted, this is reflected in the database and this data is permanently lost. Example config:
 
 ``` yaml
 version: 1

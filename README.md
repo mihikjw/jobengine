@@ -203,6 +203,7 @@ There is no jobs at status 'queued' in the queue
 
 ## TO DO
 ### Short Term
+- Unit Tests; Improve test coverage
 - Add Job Delete endpoint
 - Add Create, Read, Delete to queues
     - Add goroutine to monitor config updates when a queue is added/deleted/modified

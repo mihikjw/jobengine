@@ -128,7 +128,7 @@ func (c *Controller) ExportQueue(name, status string) (map[string]interface{}, e
 
 	data, located := c.queues[name]
 	if !located {
-		return nil, nil
+		return nil, fmt.Errorf("Not Found")
 	}
 
 	result := c.exportQueue(name, status, data)

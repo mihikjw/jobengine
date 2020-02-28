@@ -174,6 +174,9 @@ There is no jobs at status 'queued' in the queue
     - timeout_time: unix epoch time integer for when the job is considered 'timed out' if it is at status 'queued'
     - uid: unique identification string for the job; you can assert this is unique
 
+##### 204 NO CONTENT
+No jobs exist at the current status, if this filter is not applied, no jobs exist.
+
 ### UpdateJob: POST /api/v1/jobs/:uid
 #### URL Parameters
 - uid: the unique identifier for the job (uid generated in CreateJob)

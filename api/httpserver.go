@@ -201,12 +201,20 @@ func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
 
 	jobs, err := s.controller.ExportQueue(queueName, statusFilter)
 	if err != nil {
+		if err.Error() == fmt.Sprintf("Not Found") {
+			s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
+			gc.Status(http.StatusNotFound)
+			return
+		}
+
 		s.log.Error(fmt.Sprintf("Error Getting Jobs: %s", err.Error()))
 		gc.Status(http.StatusInternalServerError)
 		return
-	} else if jobs == nil {
-		s.log.Error(fmt.Sprintf("Queue %s Not Found", queueName))
-		gc.Status(http.StatusNotFound)
+	}
+
+	if len(jobs["jobs"].(map[string]interface{})) == 0 {
+		s.log.Info(fmt.Sprintf("Queue %s Length Is 0", queueName))
+		gc.Status(http.StatusNoContent)
 		return
 	}
 

@@ -213,6 +213,7 @@ func (s *HTTPServer) getJobsAtStatus(gc *gin.Context) {
 	gc.JSON(http.StatusOK, jobs["jobs"])
 }
 
+//updateJob is a handler for requests to POST /api/v1/jobs/:uid, allows updates of one or more fields on the job
 func (s *HTTPServer) updateJob(gc *gin.Context) {
 	jobUID := gc.Param("uid")
 	if len(jobUID) <= 0 {

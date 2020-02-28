@@ -262,15 +262,15 @@ func (s *HTTPServer) updateJob(gc *gin.Context) {
 	}
 
 	var timeoutTime int64 = 0
-	tempTimeoutTime, found := requestBody["timeout_time"].(int)
+	tempTimeoutTime, found := requestBody["timeout_time"]
 	if found {
-		timeoutTime = int64(tempTimeoutTime)
+		timeoutTime = int64(tempTimeoutTime.(float64))
 	}
 
 	var priority uint8 = 0
-	tempPriority, found := requestBody["priority"].(int)
+	tempPriority, found := requestBody["priority"]
 	if found {
-		priority = uint8(tempPriority)
+		priority = uint8(tempPriority.(float64))
 	}
 
 	state, found := requestBody["status"].(string)

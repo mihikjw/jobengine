@@ -207,6 +207,7 @@ No jobs exist at the current status, if this filter is not applied, no jobs exis
 ## TO DO
 ### Short Term
 - Unit Tests; Improve test coverage
+- Change API to marshal/unmarshal directly from structs instead of manual parsing and asserting types
 - Add Job Delete endpoint
 - Add Create, Read, Delete to queues
     - Add goroutine to monitor config updates when a queue is added/deleted/modified

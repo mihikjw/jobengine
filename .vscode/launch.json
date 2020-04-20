@@ -8,10 +8,8 @@
             "mode": "auto",
             "program": "${workspaceFolder}/main.go",
             "env": {
+                "DB_PATH": "./examples/database.jedb",
                 "SECRET": "hello_world",
-                "GIN_MODE": "release",
-                "CONFIG_PATH": "./examples/config.yml",
-                "DB_PATH": "./examples/queues.queuedb"
             },
             "args": []
         }

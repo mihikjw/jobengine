@@ -1,5 +1,4 @@
 APPLICATION_NAME = jobengine
-APPLICATION_PUBLISHER = michaelwittgreffe
 
 all:
 	@$(MAKE) clean create-dir test build success || $(MAKE) failure
@@ -28,10 +27,6 @@ test-long:
 	@$(MAKE) clean-test-data
 	go test ./... -coverprofile=coverage.out -bench . -count=1
 	go tool cover -html=coverage.out -o coverage.html
-
-update-dependencies:
-	go get gopkg.in/yaml.v2
-	go get github.com/gin-gonic/gin
 
 success:
 	printf "\n\e[1;32mBuild Successful\e[0m\n"

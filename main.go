@@ -19,7 +19,7 @@ func main() {
 
 	secretKey := os.Getenv("SECRET")
 	if len(secretKey) <= 0 {
-		logger.Error("SECRET Not Defined")
+		logger.Fatal("SECRET Not Defined")
 	}
 
 	var err error
@@ -31,8 +31,7 @@ func main() {
 	)
 
 	if dbFileHandler == nil {
-		logger.Error("Unable To Create File Handler")
-		os.Exit(1)
+		logger.Fatal("Unable To Create File Handler")
 	}
 
 	if _, err = os.Stat(dbPath); err == nil {
@@ -44,8 +43,7 @@ func main() {
 	}
 
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed To Create Or Load DBFile: %s", err.Error()))
-		os.Exit(1)
+		logger.Fatal(fmt.Sprintf("Failed To Create Or Load DBFile: %s", err.Error()))
 	}
 
 	// start monitoring the DBFile ready for changes

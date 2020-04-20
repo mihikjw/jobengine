@@ -30,3 +30,9 @@ func (l *StdLogger) Error(msg string) error {
 	l.stdErr.Print(msg)
 	return nil
 }
+
+// Fatal logs a message and exits the application, designed to be used in startup
+func (l *StdLogger) Fatal(msg string) error {
+	l.stdErr.Fatal(msg)
+	return nil
+}

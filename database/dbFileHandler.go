@@ -34,14 +34,14 @@ type FSFileHandler struct {
 	data    DBDataHandler
 }
 
-// SaveToFile saves the given dbFile to the given filePath
+// SaveToFile saves the given dbFile to the given filePath, applies lock
 func (h *FSFileHandler) SaveToFile(dbFile *DBFile, filePath string) error {
 	if dbFile == nil || len(filePath) == 0 {
 		return fmt.Errorf("Invalid Args")
 	}
 
-	dbFile.mutex.Lock()
-	defer dbFile.mutex.Unlock()
+	dbFile.lock.Lock()
+	defer dbFile.lock.Unlock()
 
 	encodedData, err := h.data.Encode(dbFile)
 	if err != nil {
@@ -61,14 +61,14 @@ func (h *FSFileHandler) SaveToFile(dbFile *DBFile, filePath string) error {
 	return nil
 }
 
-// LoadFromFile loads the given filePath database into the given dbFile object
+// LoadFromFile loads the given filePath database into the given dbFile object, applies lock
 func (h *FSFileHandler) LoadFromFile(dbFile *DBFile, filePath string) error {
 	if dbFile == nil || len(filePath) == 0 {
 		return fmt.Errorf("Invalid Args")
 	}
 
-	dbFile.mutex.Lock()
-	defer dbFile.mutex.Unlock()
+	dbFile.lock.Lock()
+	defer dbFile.lock.Unlock()
 
 	/* ADD THE IMPLEMENTATION OF DATABASE LOADING HERE */
 

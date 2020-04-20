@@ -4,4 +4,5 @@ package logger
 type Logger interface {
 	Info(msg string) error
 	Error(msg string) error
+	Fatal(msg string) error
 }

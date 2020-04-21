@@ -45,5 +45,5 @@ Jobs are persisted in an encrypted database file, this is encrypted with AES. Ch
         - GetJob
         - GetNextJob
         - GetAllJobs
-        - UpdateJob
+        - UpdateJobStatus
         - DeleteJob

@@ -2,13 +2,13 @@ package database
 
 // Job represents a job within the database
 type Job struct {
-	KeepMinutes    int                    `json:"keep_minutes"`
-	TimeoutMinutes int                    `json:"timeout_minutes"`
+	Priority       int                    `json:"priority"`
+	KeepMinutes    int64                  `json:"keep_minutes"`
+	TimeoutMinutes int64                  `json:"timeout_minutes"`
+	LastUpdated    int64                  `json:"last_updated"`
+	Created        int64                  `json:"created"`
+	TimeoutTime    int64                  `json:"timeout_time"`
 	UID            string                 `json:"uid"`
 	Content        map[string]interface{} `json:"content"`
 	State          string                 `json:"state"`
-	LastUpdated    float64                `json:"last_updated"`
-	Created        float64                `json:"created"`
-	TimeoutTime    float64                `json:"timeout_time"`
-	Priority       int                    `json:"priority"`
 }

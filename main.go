@@ -49,6 +49,11 @@ func main() {
 		logger.Fatal(fmt.Sprintf("Error Locating DB File: %s", err.Error()))
 	}
 
-	// start monitoring the DBFile ready for changes
+	dbFileMonitor := database.NewDBFileMonitor(dbFile, dbPath, dbFileHandler, logger)
+	if dbFileMonitor == nil {
+		logger.Fatal("Failed Creating Monitor")
+	}
+	go dbFileMonitor.Start()
+
 	// host the API
 }

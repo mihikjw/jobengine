@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelWittgreffe/jobengine/logger"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/google/uuid"
 )
 
 // HTTPAPI is an object for an HTTP/1.1 API for controlling the application
@@ -45,6 +46,10 @@ func NewHTTPAPI(logger logger.Logger, monitor database.DBMonitor, controller dat
 	api.router.Put("/api/v1/queue", api.CreateQueue)
 	api.router.Get("/api/v1/queue", api.GetQueue)
 	api.router.Delete("/api/v1/queue", api.DeleteQueue)
+
+	api.router.Put("/api/v1/job", api.AddJob)
+	api.router.Get("/api/v1/job", api.GetJob)
+
 	return api
 }
 
@@ -93,6 +98,24 @@ func (a *HTTPAPI) GetQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// regardless whether the user has access, we should use this time to update the queue
+	if err := a.control.UpdateQueue(queueName); err != nil {
+		errStr := err.Error()
+		switch {
+		case errStr == "Invalid Arg":
+			returnStatusCode(http.StatusBadRequest, w)
+			return
+		case errStr == "Not Found":
+			returnStatusCode(http.StatusNotFound, w)
+			return
+		default:
+			returnInternalServerError(err, w, a.json)
+			return
+		}
+	}
+
+	a.monitor.Write()
+
 	queue, err := a.control.GetQueue(queueName, accessKey)
 	if err != nil {
 		errStr := err.Error()
@@ -104,8 +127,10 @@ func (a *HTTPAPI) GetQueue(w http.ResponseWriter, r *http.Request) {
 		default:
 			returnInternalServerError(err, w, a.json)
 		}
+		return
 	} else if queue == nil && err == nil {
 		returnStatusCode(http.StatusNotFound, w)
+		return
 	}
 
 	response := new(GetQueueResponse)
@@ -139,7 +164,104 @@ func (a *HTTPAPI) DeleteQueue(w http.ResponseWriter, r *http.Request) {
 		default:
 			returnInternalServerError(err, w, a.json)
 		}
+		return
 	}
 
+	a.monitor.Write()
 	returnStatusCode(http.StatusNoContent, w)
+}
+
+// AddJob is an endpoint handler for adding a new job to a queue
+func (a *HTTPAPI) AddJob(w http.ResponseWriter, r *http.Request) {
+	accessKey := r.Header.Get("X-Access-Key")
+	body := new(AddJobRequest)
+	err := getRequestBody(body, r, a.json)
+	if len(accessKey) == 0 || err != nil {
+		returnStatusCode(http.StatusBadRequest, w)
+		return
+	}
+
+	job := body.Job
+	job.Created = time.Now().Unix()
+	job.LastUpdated = job.Created
+	job.State = database.Queued
+	job.UID = uuid.New().String()
+
+	if err = a.control.AddJob(job, body.QueueName, accessKey, false); err != nil {
+		errStr := err.Error()
+		switch {
+		case errStr == "Invalid Arg":
+			returnStatusCode(http.StatusBadRequest, w)
+		case errStr == "Unauthorized":
+			returnStatusCode(http.StatusUnauthorized, w)
+		case errStr == "Not Found":
+			returnStatusCode(http.StatusNotFound, w)
+		default:
+			returnInternalServerError(err, w, a.json)
+		}
+		return
+	}
+
+	a.control.UpdateQueue(body.QueueName)
+	a.monitor.Write()
+	if err = sendResponseBody(http.StatusCreated, job, w, a.json); err != nil {
+		returnInternalServerError(err, w, a.json)
+	}
+}
+
+// GetJob is a handler for querying an entry for a specific job
+func (a *HTTPAPI) GetJob(w http.ResponseWriter, r *http.Request) {
+	accessKey := r.Header.Get("X-Access-Key")
+	queueName := r.URL.Query().Get("queueName")
+	uid := r.URL.Query().Get("jobUID")
+	if len(uid) == 0 || len(queueName) == 0 || len(accessKey) == 0 {
+		returnStatusCode(http.StatusBadRequest, w)
+		return
+	}
+
+	// regardless whether the user has access, we should use this time to update the queue
+	if err := a.control.UpdateQueue(queueName); err != nil {
+		errStr := err.Error()
+		switch {
+		case errStr == "Invalid Arg":
+			returnStatusCode(http.StatusBadRequest, w)
+			return
+		case errStr == "Not Found":
+			returnStatusCode(http.StatusNotFound, w)
+			return
+		default:
+			returnInternalServerError(err, w, a.json)
+			return
+		}
+	}
+
+	a.monitor.Write()
+
+	queue, err := a.control.GetQueue(queueName, accessKey)
+	if err != nil {
+		errStr := err.Error()
+		switch {
+		case errStr == "Invalid Arg":
+			returnStatusCode(http.StatusBadRequest, w)
+		case errStr == "Unauthorized":
+			returnStatusCode(http.StatusUnauthorized, w)
+		default:
+			returnInternalServerError(err, w, a.json)
+		}
+		return
+	} else if queue == nil && err == nil {
+		returnStatusCode(http.StatusNotFound, w)
+		return
+	}
+
+	for _, job := range queue.Jobs {
+		if job.UID == uid {
+			if err = sendResponseBody(http.StatusOK, job, w, a.json); err != nil {
+				returnInternalServerError(err, w, a.json)
+			}
+			return
+		}
+	}
+
+	returnStatusCode(http.StatusNotFound, w)
 }

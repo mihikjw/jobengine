@@ -17,6 +17,7 @@ type QueryController interface {
 	GetJob(uid, queueName, accessKey string) (*Job, error)
 	GetAllJobs(queueName, accessKey string) ([]*Job, error)
 	UpdateJobStatus(uid, newStatus, queueName, accessKey string) error
+	UpdateQueue(queueName string) error
 }
 
 // QueryControl object is used to make queries to the database
@@ -136,6 +137,7 @@ func (c *QueryControl) AddJob(job *Job, queueName, accessKey string, sort bool) 
 	}
 
 	queue.Jobs = append(queue.Jobs, job)
+	queue.Size++
 
 	if sort {
 		c.sortQueue(queue)
@@ -285,7 +287,7 @@ func (c *QueryControl) UpdateQueue(queueName string) error {
 			//mark as failed if no update within the timeout cut-off
 			job.State = Failed
 			job.LastUpdated = currentTime
-		} else if (job.State == Queued) && (currentTime > job.TimeoutTime) {
+		} else if job.State == Queued && (job.TimeoutTime > 0 && (currentTime > job.TimeoutTime)) {
 			//delete queued jobs that are timed out
 			indexToDelete = append(indexToDelete, i)
 		}
@@ -293,6 +295,9 @@ func (c *QueryControl) UpdateQueue(queueName string) error {
 
 	for _, indexToDelete := range indexToDelete {
 		c.deleteJobAtIndex(queue, indexToDelete)
+		if queue.Size > 0 {
+			queue.Size--
+		}
 	}
 
 	c.sortQueue(queue)

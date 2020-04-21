@@ -35,8 +35,11 @@ Jobs are persisted in an encrypted database file, this is encrypted with AES. Ch
     - stores queues with jobs
     - write-on-change in a seperate goroutine
 - API
-    - CRUD queues
-    - test endpoint
+    - Queues
+        - Create
+        - Read
+        - Delete
+    - Test endpoint
     - Jobs
         - Add
         - GetJob

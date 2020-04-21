@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/MichaelWittgreffe/jobengine/api"
+	"github.com/MichaelWittgreffe/jobengine/crypto"
 	"github.com/MichaelWittgreffe/jobengine/database"
 	"github.com/MichaelWittgreffe/jobengine/filesystem"
 	"github.com/MichaelWittgreffe/jobengine/logger"
@@ -19,6 +21,12 @@ func main() {
 		dbPath = "/jobengine/database.queuedb"
 	}
 
+	apiPort := fileHandler.GetEnv("API_PORT")
+	if len(dbPath) <= 0 {
+		logger.Info("aPI_PORT Not Defined, Using Default")
+		apiPort = "80"
+	}
+
 	secretKey := fileHandler.GetEnv("SECRET")
 	if len(secretKey) <= 0 {
 		logger.Fatal("SECRET Not Defined")
@@ -26,7 +34,7 @@ func main() {
 
 	dbFileHandler := database.NewDBFileHandler(
 		"fs",
-		database.NewEncryptionHandler(secretKey, "AES", database.NewHashHandler("md5")),
+		crypto.NewEncryptionHandler(secretKey, "AES", crypto.NewHashHandler("md5")),
 		database.NewDBDataHandler("json"),
 		fileHandler,
 	)
@@ -55,5 +63,6 @@ func main() {
 	}
 	go dbFileMonitor.Start()
 
-	// host the API
+	httpAPI := api.NewHTTPAPI(logger, dbFileMonitor, database.NewQueryController(dbFile, crypto.NewHashHandler("sha512")))
+	httpAPI.ListenAndServe(apiPort)
 }

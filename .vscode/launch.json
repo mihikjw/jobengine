@@ -10,6 +10,7 @@
             "env": {
                 "DB_PATH": "./examples/database.jedb",
                 "SECRET": "hello_world",
+                "API_PORT": "6006"
             },
             "args": []
         }

@@ -3,6 +3,7 @@ package database
 import (
 	"fmt"
 
+	"github.com/MichaelWittgreffe/jobengine/crypto"
 	"github.com/MichaelWittgreffe/jobengine/filesystem"
 )
 
@@ -13,7 +14,7 @@ type DBFileHandler interface {
 }
 
 // NewDBFileHandler is a factory function for creating a derived instance of the DBFileHandler interface. Performs a hash on the given key to ensure size
-func NewDBFileHandler(dbFileHandleType string, encryptHandler EncryptionHandler, dataHandler DBDataHandler, fileHandler filesystem.FileSystem) DBFileHandler {
+func NewDBFileHandler(dbFileHandleType string, encryptHandler crypto.EncryptionHandler, dataHandler DBDataHandler, fileHandler filesystem.FileSystem) DBFileHandler {
 	if len(dbFileHandleType) == 0 || encryptHandler == nil || dataHandler == nil {
 		return nil
 	}
@@ -32,7 +33,7 @@ func NewDBFileHandler(dbFileHandleType string, encryptHandler EncryptionHandler,
 
 // FSFileHandler handles a DBFile through the default avalible file system
 type FSFileHandler struct {
-	encrypt EncryptionHandler
+	encrypt crypto.EncryptionHandler
 	data    DBDataHandler
 	file    filesystem.FileSystem
 }

@@ -1,4 +1,4 @@
-package database
+package crypto
 
 import (
 	"crypto/md5"
@@ -45,6 +45,8 @@ func (hs *HashProcess) Process(input string) (string, error) {
 	if len(input) == 0 {
 		return "", fmt.Errorf("Invalid Arg")
 	}
+
+	defer hs.hasher.Reset()
 
 	_, err := hs.hasher.Write([]byte(input))
 	if err != nil {

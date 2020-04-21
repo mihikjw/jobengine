@@ -6,8 +6,8 @@ import (
 
 // DBDataHandler is an interface for encoding/decoding a DBFile between object and a data format
 type DBDataHandler interface {
-	Encode(input *DBFile) ([]byte, error)
-	Decode(input []byte, dbFile *DBFile) error
+	Encode(input interface{}) ([]byte, error)
+	Decode(input []byte, output interface{}) error
 }
 
 // NewDBDataHandler is a factory function for the DBDataHandler interface
@@ -24,11 +24,11 @@ func NewDBDataHandler(dataType string) DBDataHandler {
 type JSONDataHandler struct{}
 
 // Encode marshals the given input DBFile to a JSON []byte
-func (h *JSONDataHandler) Encode(input *DBFile) ([]byte, error) {
+func (h *JSONDataHandler) Encode(input interface{}) ([]byte, error) {
 	return json.Marshal(input)
 }
 
 // Decode unmarshals the given JSON []byte to a DBFile
-func (h *JSONDataHandler) Decode(input []byte, dbFile *DBFile) error {
-	return json.Unmarshal(input, dbFile)
+func (h *JSONDataHandler) Decode(input []byte, output interface{}) error {
+	return json.Unmarshal(input, output)
 }

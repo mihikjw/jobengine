@@ -6,6 +6,12 @@ import (
 	"github.com/MichaelWittgreffe/jobengine/logger"
 )
 
+// DBMonitor presents an object for write requests and start monitoring the DB
+type DBMonitor interface {
+	Write()
+	Start()
+}
+
 // DBFileMonitor is an object responsible for writing changes to the DBFile object to the database
 type DBFileMonitor struct {
 	dbFile      *DBFile
@@ -16,7 +22,7 @@ type DBFileMonitor struct {
 }
 
 // NewDBFileMonitor is a constructor for the DBFileMonitor type
-func NewDBFileMonitor(dbFile *DBFile, filePath string, dbFileHandler DBFileHandler, logger logger.Logger) *DBFileMonitor {
+func NewDBFileMonitor(dbFile *DBFile, filePath string, dbFileHandler DBFileHandler, logger logger.Logger) DBMonitor {
 	if dbFileHandler == nil {
 		return nil
 	}

@@ -1,4 +1,4 @@
-package database
+package crypto
 
 // EncryptionHandler is an interface for encryption/decryption objects
 type EncryptionHandler interface {

@@ -43,7 +43,7 @@ Jobs are persisted in an encrypted database file, this is encrypted with AES. Ch
     - Jobs
         - Add: done
         - GetJob: done
-        - GetNextJob
-        - GetAllJobs
-        - UpdateJobStatus
-        - DeleteJob
+        - GetNextJob: done
+        - GetAllJobs: 
+        - UpdateJobStatus: 
+        - DeleteJob: 

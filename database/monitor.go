@@ -51,14 +51,17 @@ func (m *DBFileMonitor) Start() {
 		case writeFlag, open := <-m.flag:
 			if open {
 				if writeFlag {
-					//reset flag before write
-					if writeFlag {
-						m.flag <- false
-					}
+					// -----------------------------
+					m.log.Info("DEBUGGING: Writing To File")
+					// -----------------------------
 
 					if err := m.fileHandler.SaveToFile(m.dbFile, m.dbFilePath); err != nil {
 						m.log.Error(fmt.Sprintf("Error Saving DB File: %s", err.Error()))
 					}
+
+					// -----------------------------
+					m.log.Info("DEBUGGING: Write Complete")
+					// -----------------------------
 				}
 			} else {
 				m.log.Error("DBFile Monitor Write Channel Closed")

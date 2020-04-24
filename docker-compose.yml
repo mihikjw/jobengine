@@ -1,0 +1,21 @@
+version: '3'
+networks:
+    app-net:
+        internal: false
+services:
+    jobengine:
+        container_name: jobengine
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: mw/jobengine:0.0.1
+        networks:
+            - app-net
+        ports:
+            - 6006:6006
+        volumes:
+            - "./examples:/jobengine"
+        environment:
+            DB_PATH: /jobengine/database.jedb
+            SECRET: hello_world
+            API_PORT: "6006"

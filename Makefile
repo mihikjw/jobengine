@@ -1,10 +1,13 @@
 APPLICATION_NAME = jobengine
 
 all:
-	@$(MAKE) clean create-dir test build success || $(MAKE) failure
+	@$(MAKE) create-dir install test build success || $(MAKE) failure
+
+install: 
+	go mod download
 
 build:
-	go build -o bin/${APPLICATION_NAME} -v
+	GOOS=linux go build -o bin/${APPLICATION_NAME} -v
 
 ide-build:
 	@$(MAKE) build success || $(MAKE) failure

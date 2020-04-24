@@ -15,6 +15,7 @@ type QueryController interface {
 	DeleteQueue(name, accessKey string) error
 	AddJob(job *Job, queueName, accessKey string, sort bool) error
 	GetJob(uid, queueName, accessKey string) (*Job, error)
+	GetNextJob(queueName, accessKey string) (*Job, error)
 	GetAllJobs(queueName, accessKey string) ([]*Job, error)
 	UpdateJobStatus(uid, newStatus, queueName, accessKey string) error
 	UpdateQueue(queueName string) error
@@ -198,7 +199,7 @@ func (c *QueryControl) GetNextJob(queueName, accessKey string) (*Job, error) {
 	}
 
 	for _, job := range queue.Jobs {
-		if job.State == Inprogress {
+		if job.State == Queued {
 			return job, nil
 		}
 	}
@@ -273,17 +274,17 @@ func (c *QueryControl) UpdateQueue(queueName string) error {
 
 	queue, found := c.db.Queues[queueName]
 	if !found {
-		return fmt.Errorf(("Not Found"))
+		return fmt.Errorf("Not Found")
 	}
 
 	currentTime := time.Now().Unix()
 	indexToDelete := make([]int, 0)
 
 	for i, job := range queue.Jobs {
-		if (job.State == Complete || job.State == Failed) && job.LastUpdated < (currentTime-job.KeepMinutes) {
+		if (job.State == Complete || job.State == Failed) && job.LastUpdated < (currentTime-(job.KeepMinutes*60)) {
 			//remove complete/failed jobs that are outside the keep window
 			indexToDelete = append(indexToDelete, i)
-		} else if job.State == Inprogress && (job.LastUpdated < (currentTime - job.TimeoutMinutes)) {
+		} else if job.State == Inprogress && (job.LastUpdated < (currentTime - (job.TimeoutMinutes * 60))) {
 			//mark as failed if no update within the timeout cut-off
 			job.State = Failed
 			job.LastUpdated = currentTime

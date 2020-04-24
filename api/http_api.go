@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/MichaelWittgreffe/jobengine/database"
@@ -49,6 +50,7 @@ func NewHTTPAPI(logger logger.Logger, monitor database.DBMonitor, controller dat
 
 	api.router.Put("/api/v1/job", api.AddJob)
 	api.router.Get("/api/v1/job", api.GetJob)
+	api.router.Get("/api/v1/job/next", api.GetNextJob)
 
 	return api
 }
@@ -99,22 +101,9 @@ func (a *HTTPAPI) GetQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// regardless whether the user has access, we should use this time to update the queue
-	if err := a.control.UpdateQueue(queueName); err != nil {
-		errStr := err.Error()
-		switch {
-		case errStr == "Invalid Arg":
-			returnStatusCode(http.StatusBadRequest, w)
-			return
-		case errStr == "Not Found":
-			returnStatusCode(http.StatusNotFound, w)
-			return
-		default:
-			returnInternalServerError(err, w, a.json)
-			return
-		}
+	if !updateQueue(queueName, a.control, w, a.json, a.monitor) {
+		return
 	}
-
-	a.monitor.Write()
 
 	queue, err := a.control.GetQueue(queueName, accessKey)
 	if err != nil {
@@ -220,24 +209,11 @@ func (a *HTTPAPI) GetJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// regardless whether the user has access, we should use this time to update the queue
-	if err := a.control.UpdateQueue(queueName); err != nil {
-		errStr := err.Error()
-		switch {
-		case errStr == "Invalid Arg":
-			returnStatusCode(http.StatusBadRequest, w)
-			return
-		case errStr == "Not Found":
-			returnStatusCode(http.StatusNotFound, w)
-			return
-		default:
-			returnInternalServerError(err, w, a.json)
-			return
-		}
+	if !updateQueue(queueName, a.control, w, a.json, a.monitor) {
+		return
 	}
 
-	a.monitor.Write()
-
-	queue, err := a.control.GetQueue(queueName, accessKey)
+	job, err := a.control.GetJob(uid, queueName, accessKey)
 	if err != nil {
 		errStr := err.Error()
 		switch {
@@ -249,19 +225,62 @@ func (a *HTTPAPI) GetJob(w http.ResponseWriter, r *http.Request) {
 			returnInternalServerError(err, w, a.json)
 		}
 		return
-	} else if queue == nil && err == nil {
+	} else if job == nil {
 		returnStatusCode(http.StatusNotFound, w)
 		return
 	}
 
-	for _, job := range queue.Jobs {
-		if job.UID == uid {
-			if err = sendResponseBody(http.StatusOK, job, w, a.json); err != nil {
-				returnInternalServerError(err, w, a.json)
-			}
-			return
-		}
+	if err := sendResponseBody(http.StatusOK, job, w, a.json); err != nil {
+		returnInternalServerError(err, w, a.json)
+		return
+	}
+}
+
+// GetNextJob is a handler for returning the next job from the queue head that is queued
+func (a *HTTPAPI) GetNextJob(w http.ResponseWriter, r *http.Request) {
+	accessKey := r.Header.Get("X-Access-Key")
+	queueName := r.URL.Query().Get("queueName")
+	if len(queueName) == 0 || len(accessKey) == 0 {
+		returnStatusCode(http.StatusBadRequest, w)
+		return
 	}
 
-	returnStatusCode(http.StatusNotFound, w)
+	// regardless whether the user has access, we should use this time to update the queue
+	if !updateQueue(queueName, a.control, w, a.json, a.monitor) {
+		return
+	}
+
+	job, err := a.control.GetNextJob(queueName, accessKey)
+	if err != nil {
+		errStr := err.Error()
+		switch {
+		case errStr == "Invalid Arg":
+			returnStatusCode(http.StatusBadRequest, w)
+		case errStr == "Unauthorized":
+			returnStatusCode(http.StatusUnauthorized, w)
+		default:
+			returnInternalServerError(err, w, a.json)
+		}
+		return
+	} else if job == nil {
+		returnStatusCode(http.StatusNoContent, w)
+		return
+	}
+
+	// update the job status if the flag is set, default don't update
+	markQueued := r.URL.Query().Get("markQueued")
+	if len(markQueued) > 0 && strings.ToLower(markQueued) == "true" {
+		if err := a.control.UpdateJobStatus(job.UID, database.Inprogress, queueName, accessKey); err != nil {
+			returnInternalServerError(err, w, a.json)
+			return
+		}
+		job.State = database.Inprogress
+		a.monitor.Write()
+	}
+
+	if err := sendResponseBody(http.StatusOK, job, w, a.json); err != nil {
+		returnInternalServerError(err, w, a.json)
+		return
+	}
+
 }

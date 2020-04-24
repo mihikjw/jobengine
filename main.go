@@ -64,5 +64,5 @@ func main() {
 	go dbFileMonitor.Start()
 
 	httpAPI := api.NewHTTPAPI(logger, dbFileMonitor, database.NewQueryController(dbFile, crypto.NewHashHandler("sha512")))
-	httpAPI.ListenAndServe(apiPort)
+	logger.Fatal(httpAPI.ListenAndServe(apiPort).Error())
 }

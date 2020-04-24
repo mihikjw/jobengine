@@ -56,3 +56,22 @@ func returnInternalServerError(err error, w http.ResponseWriter, json *database.
 	}
 	return nil
 }
+
+// updateQueue performs an update and file write on the queue, returns true on success, false on failure with error response already setup
+func updateQueue(queueName string, c database.QueryController, w http.ResponseWriter, j *database.JSONDataHandler, m database.DBMonitor) bool {
+	if err := c.UpdateQueue(queueName); err != nil {
+		errStr := err.Error()
+		switch {
+		case errStr == "Invalid Arg":
+			returnStatusCode(http.StatusBadRequest, w)
+		case errStr == "Not Found":
+			returnStatusCode(http.StatusNotFound, w)
+		default:
+			returnInternalServerError(err, w, j)
+		}
+		return false
+	}
+
+	m.Write()
+	return true
+}

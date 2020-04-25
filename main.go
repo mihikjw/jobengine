@@ -14,23 +14,7 @@ func main() {
 	logger := logger.NewLogger("std")
 	fileHandler := filesystem.NewFileSystem("os")
 	dbFile := database.NewDBFile()
-
-	dbPath := fileHandler.GetEnv("DB_PATH")
-	if len(dbPath) <= 0 {
-		logger.Info("DB_PATH Not Defined, Using Default")
-		dbPath = "/jobengine/database.queuedb"
-	}
-
-	apiPort := fileHandler.GetEnv("API_PORT")
-	if len(dbPath) <= 0 {
-		logger.Info("aPI_PORT Not Defined, Using Default")
-		apiPort = "80"
-	}
-
-	secretKey := fileHandler.GetEnv("SECRET")
-	if len(secretKey) <= 0 {
-		logger.Fatal("SECRET Not Defined")
-	}
+	dbPath, apiPort, secretKey := getEnvVars(logger, fileHandler)
 
 	dbFileHandler := database.NewDBFileHandler(
 		"fs",
@@ -38,7 +22,6 @@ func main() {
 		database.NewDBDataHandler("json"),
 		fileHandler,
 	)
-
 	if dbFileHandler == nil {
 		logger.Fatal("Unable To Create File Handler")
 	}
@@ -65,4 +48,26 @@ func main() {
 
 	httpAPI := api.NewHTTPAPI(logger, dbFileMonitor, database.NewQueryController(dbFile, crypto.NewHashHandler("sha512")))
 	logger.Fatal(httpAPI.ListenAndServe(apiPort).Error())
+}
+
+// getEnvVars returns the required env var values/default values - exits app if mandatory values are not populated
+func getEnvVars(l logger.Logger, fh filesystem.FileSystem) (string, string, string) {
+	dbPath := fh.GetEnv("DB_PATH")
+	if len(dbPath) <= 0 {
+		l.Info("DB_PATH Not Defined, Using Default")
+		dbPath = "/jobengine/database.queuedb"
+	}
+
+	apiPort := fh.GetEnv("API_PORT")
+	if len(dbPath) <= 0 {
+		l.Info("API_PORT Not Defined, Using Default")
+		apiPort = "80"
+	}
+
+	secretKey := fh.GetEnv("SECRET")
+	if len(secretKey) <= 0 {
+		l.Fatal("SECRET Not Defined")
+	}
+
+	return dbPath, apiPort, secretKey
 }

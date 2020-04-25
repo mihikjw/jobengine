@@ -51,8 +51,8 @@ func NewHTTPAPI(logger logger.Logger, monitor database.DBMonitor, controller dat
 	api.router.Put("/api/v1/job", api.AddJob)
 	api.router.Get("/api/v1/job", api.GetJob)
 	api.router.Get("/api/v1/job/next", api.GetNextJob)
-	api.router.Post("/api/v1/job/update", api.UpdateJobStatus)
-	api.router.Delete("/api/v1/job/delete", api.DeleteJob)
+	api.router.Post("/api/v1/job", api.UpdateJobStatus)
+	api.router.Delete("/api/v1/job", api.DeleteJob)
 
 	return api
 }
@@ -89,8 +89,7 @@ func (a *HTTPAPI) CreateQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.monitor.Write()
-
-	w.WriteHeader(http.StatusCreated)
+	returnStatusCode(http.StatusCreated, w)
 }
 
 // GetQueue is an endpoint handler for API requests to return a copy of a queue
@@ -129,7 +128,7 @@ func (a *HTTPAPI) GetQueue(w http.ResponseWriter, r *http.Request) {
 	response.Name = queue.Name
 	response.Size = queue.Size
 
-	if err = sendResponseBody(http.StatusOK, response, w, a.json); err != nil {
+	if err = returnResponseBody(http.StatusOK, response, w, a.json); err != nil {
 		returnInternalServerError(err, w, a.json)
 	}
 }
@@ -195,7 +194,7 @@ func (a *HTTPAPI) AddJob(w http.ResponseWriter, r *http.Request) {
 
 	a.control.UpdateQueue(body.QueueName)
 	a.monitor.Write()
-	if err = sendResponseBody(http.StatusCreated, job, w, a.json); err != nil {
+	if err = returnResponseBody(http.StatusCreated, job, w, a.json); err != nil {
 		returnInternalServerError(err, w, a.json)
 	}
 }
@@ -232,7 +231,7 @@ func (a *HTTPAPI) GetJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := sendResponseBody(http.StatusOK, job, w, a.json); err != nil {
+	if err := returnResponseBody(http.StatusOK, job, w, a.json); err != nil {
 		returnInternalServerError(err, w, a.json)
 		return
 	}
@@ -280,7 +279,7 @@ func (a *HTTPAPI) GetNextJob(w http.ResponseWriter, r *http.Request) {
 		a.monitor.Write()
 	}
 
-	if err := sendResponseBody(http.StatusOK, job, w, a.json); err != nil {
+	if err := returnResponseBody(http.StatusOK, job, w, a.json); err != nil {
 		returnInternalServerError(err, w, a.json)
 		return
 	}

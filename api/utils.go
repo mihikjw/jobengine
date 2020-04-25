@@ -22,8 +22,8 @@ func getRequestBody(bodyObj interface{}, r *http.Request, json *database.JSONDat
 	return err
 }
 
-// sendResponseBody unmarshals the given object into the http response and sets the content type
-func sendResponseBody(statusCode int, bodyObj interface{}, w http.ResponseWriter, json *database.JSONDataHandler) error {
+// returnResponseBody unmarshals the given object into the http response and sets the content type
+func returnResponseBody(statusCode int, bodyObj interface{}, w http.ResponseWriter, json *database.JSONDataHandler) error {
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 

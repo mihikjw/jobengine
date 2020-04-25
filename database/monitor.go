@@ -44,24 +44,16 @@ func (m *DBFileMonitor) Write() {
 	m.flag <- true
 }
 
-// Start begins the monitoring and write process
+// Start begins the monitoring and write process, blocks current goroutine with infinite loop
 func (m *DBFileMonitor) Start() {
 	for true {
 		select {
 		case writeFlag, open := <-m.flag:
 			if open {
 				if writeFlag {
-					// -----------------------------
-					m.log.Info("DEBUGGING: Writing To File")
-					// -----------------------------
-
 					if err := m.fileHandler.SaveToFile(m.dbFile, m.dbFilePath); err != nil {
 						m.log.Error(fmt.Sprintf("Error Saving DB File: %s", err.Error()))
 					}
-
-					// -----------------------------
-					m.log.Info("DEBUGGING: Write Complete")
-					// -----------------------------
 				}
 			} else {
 				m.log.Error("DBFile Monitor Write Channel Closed")

@@ -1,0 +1,493 @@
+openapi: 3.0.0
+info:
+  title: JobEngine REST API Definition
+  version: "1.0.0"
+paths:
+    /test:
+        get:
+            summary: Simple 'is-alive' endpoint
+            responses:
+                '200':
+                    description: Indicates that the service is alive and ready to recieve requests
+    /api/v1/queue:
+        put:
+            summary: Create a new queue
+            requestBody:
+                description: Details for the queue to be created
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                name: 
+                                    type: string
+                                    description: Name of the queue to be created
+                                access_key:
+                                    type: string
+                                    description: Access key to be used by subsequent requests when interacting with the created queue
+                        example:
+                            name: test_queue_1
+                            access_key: mySecretAccessKey
+            responses:
+                '201':
+                    description: Succesfully created the requested queue
+                '400':
+                    description: Invalid/missing value in request body
+                '409':
+                    description: Requested queue for create already exists
+                '500':
+                    description: Error handling request
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                                        description: Details of the error encountered
+                            example:
+                                error: example error message
+        get:
+            summary: Get the full entry for a queue, including all of its jobs in execution order
+            parameters:
+            - name: X-Access-Key
+                in: header
+                required: true
+                schema:
+                    type: string
+            - name: name
+                in: query
+                required: true
+                schema:
+                    type: string
+            responses:
+                '200':
+                    description: Contents of the queue returned succesfully
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    name:
+                                        type: string
+                                        description: Name of the queue
+                                    size:
+                                        type: integer
+                                        description: Current size of the queue
+                                    jobs:
+                                        type: array
+                                        description: Jobs in the queue, executes linear from left to right
+                                        items:
+                                            type: object
+                                            properties:
+                                                uid:
+                                                    type: string
+                                                    description: UUID for the job
+                                                priority:
+                                                    type: integer
+                                                    description: Priority of the job in relation to other jobs in the queue
+                                                keep_minutes:
+                                                    type: integer
+                                                    description: Number of minutes to keep the job after it's been set to complete/failed
+                                                timeout_minutes:
+                                                    type: integer
+                                                    description: Timeout period from being set to 'inprogress' until its marked as failed if there is no update
+                                                last_updated:
+                                                    type: integer
+                                                    description: Unix epoch time of the last update to the job
+                                                created:
+                                                    type: integer
+                                                    description: Unix epoch time that the job was created in the queue
+                                                timeout_time: 
+                                                    type: integer
+                                                    description: Unix epoch time from which to not consider the job needed for execution, or "0" to never expire
+                                                content:
+                                                    type: object
+                                                    description: Content of the job as a JSON object
+                                                state:
+                                                    type: string
+                                                    description: Status of the job from ["queued", "inprogress", "complete", "failed"]
+                            example:
+                                name: test_queue_1
+                                size: 1
+                                jobs:
+                                - uid: 4282c156-a1e0-46df-aba2-531c13fcce17
+                                    priority: 45
+                                    keep_minutes: 60
+                                    timeout_minutes: 10
+                                    last_updated: 1587828519
+                                    created: 1587828519
+                                    timeout_time: 0
+                                    content:
+                                        foo: bar
+                                        bar: foo
+                                    state: queued
+                '400':
+                    description: Invalid header/query values
+                '401': 
+                    description: X-Access-Key header field is not valid for the requested queue
+                '404':
+                    description: Requested queue does not exist
+                '500':
+                    description: Error handling request
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                                        description: Details of the error encountered
+                            example:
+                                error: example error message
+        delete:
+            summary: Delete the requested queue and all the jobs within
+            parameters:
+            - name: X-Access-Key
+                in: header
+                required: true
+                schema:
+                    type: string
+            - name: name
+                in: query
+                required: true
+                schema:
+                    type: string
+            responses:
+                '204':
+                    description: Queue succesfully deleted
+                '400': 
+                    description: Invalid parameters
+                '401':
+                    description: X-Access-Key header field is not valid for the requested queue
+                '404':
+                    description: Requested queue does not exist
+                '500':
+                    description: Error handling request
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                                        description: Details of the error encountered
+                            example:
+                                error: example error message
+    /api/v1/job:
+        put:
+            description: Create a new job within a queue
+            parameters:
+            - name: X-Access-Key
+                in: header
+                required: true
+                schema:
+                    type: string
+            requestBody:
+                description: Details for the job to be created
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                queue_name: 
+                                    type: string
+                                    description: Name of the queue for the job to be added to
+                                job:
+                                    type: object
+                                    description: Details of the job to be created
+                                    properties:
+                                        priority: 
+                                            type: integer
+                                            description: Priority of the job in relation to other jobs in the queue
+                                        keep_minutes:
+                                            type: integer
+                                            description: Number of minutes to keep the job for after being set to complete/failed
+                                        timeout_minutes:
+                                            type: intger
+                                            description: Length of time to consider the job 'active' once it has been set to 'inprogress' - once this time has elapsed it will be marked as 'failed'
+                                        content:
+                                            type: object
+                                            description: Content of the job
+                        example:
+                            priority: 75
+                            keep_minutes: 60
+                            timeout_minutes: 20
+                            content:
+                                foo: bar
+                                bar: foo
+            responses:
+                '201':
+                    description: Job succesfully created in the requested queue
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    uid:
+                                        type: string
+                                        description: UUID for the job
+                                    priority:
+                                        type: integer
+                                        description: Priority of the job in relation to other jobs in the queue
+                                    keep_minutes:
+                                        type: integer
+                                        description: Number of minutes to keep the job after it's been set to complete/failed
+                                    timeout_minutes:
+                                        type: integer
+                                        description: Timeout period from being set to 'inprogress' until its marked as failed if there is no update
+                                    last_updated:
+                                        type: integer
+                                        description: Unix epoch time of the last update to the job
+                                    created:
+                                        type: integer
+                                        description: Unix epoch time that the job was created in the queue
+                                    timeout_time: 
+                                        type: integer
+                                        description: Unix epoch time from which to not consider the job needed for execution, or "0" to never expire
+                                    content:
+                                        type: object
+                                        description: Content of the job as a JSON object
+                                    state:
+                                        type: string
+                                        description: Status of the job from ["queued", "inprogress", "complete", "failed"]
+                            example:
+                                uid: 4282c156-a1e0-46df-aba2-531c13fcce17
+                                priority: 45
+                                keep_minutes: 60
+                                timeout_minutes: 10
+                                last_updated: 1587828519
+                                created: 1587828519
+                                timeout_time: 0
+                                content:
+                                    foo: bar
+                                    bar: foo
+                                state: queued
+                '400':
+                    description: Invalid header/body values
+                '401': 
+                    description: X-Access-Key header field is not valid for the requested queue
+                '404':
+                    description: Requested queue does not exist
+                '500':
+                    description: Error handling request
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                                        description: Details of the error encountered
+                            example:
+                                error: example error message
+        get:
+            description: Return the details of a specific job from a queue
+            parameters:
+                - name: X-Access-Key
+                    in: header
+                    required: true
+                    schema:
+                        type: string
+                - name: queueName
+                    in: query
+                    required: true
+                    schema:
+                        type: string
+                - name: jobUID
+                    in: query
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                '200':
+                    description: Job succesfully returned
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    uid:
+                                        type: string
+                                        description: UUID for the job
+                                    priority:
+                                        type: integer
+                                        description: Priority of the job in relation to other jobs in the queue
+                                    keep_minutes:
+                                        type: integer
+                                        description: Number of minutes to keep the job after it's been set to complete/failed
+                                    timeout_minutes:
+                                        type: integer
+                                        description: Timeout period from being set to 'inprogress' until its marked as failed if there is no update
+                                    last_updated:
+                                        type: integer
+                                        description: Unix epoch time of the last update to the job
+                                    created:
+                                        type: integer
+                                        description: Unix epoch time that the job was created in the queue
+                                    timeout_time: 
+                                        type: integer
+                                        description: Unix epoch time from which to not consider the job needed for execution, or "0" to never expire
+                                    content:
+                                        type: object
+                                        description: Content of the job as a JSON object
+                                    state:
+                                        type: string
+                                        description: Status of the job from ["queued", "inprogress", "complete", "failed"]
+                            example:
+                                uid: 4282c156-a1e0-46df-aba2-531c13fcce17
+                                priority: 45
+                                keep_minutes: 60
+                                timeout_minutes: 10
+                                last_updated: 1587828519
+                                created: 1587828519
+                                timeout_time: 0
+                                content:
+                                    foo: bar
+                                    bar: foo
+                                state: queued
+                '400':
+                    description: Invalid header/query values
+                '401': 
+                    description: X-Access-Key header field is not valid for the requested queue
+                '404':
+                    description: Requested queue/job does not exist
+                '500':
+                    description: Error handling request
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                                        description: Details of the error encountered
+                            example:
+                                error: example error message
+        delete:
+            description: Delete a job from a queue
+            parameters:
+                - name: X-Access-Key
+                    in: header
+                    required: true
+                    schema:
+                        type: string
+                - name: queueName
+                    in: query
+                    required: true
+                    schema:
+                        type: string
+                - name: jobUID
+                    in: query
+                    required: true
+                    schema:
+                        type: string
+            responses:
+                '204':
+                    description: Job deleted succesfully from requested queue
+                '400':
+                    description: Invalid header/query values
+                '401': 
+                    description: X-Access-Key header field is not valid for the requested queue
+                '404':
+                    description: Requested queue/job does not exist
+                '500':
+                    description: Error handling request
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                                        description: Details of the error encountered
+                            example:
+                                error: example error message
+    /api/v1/job/next:
+        get:
+            description: Return the next job in the queue at status 'queued'
+            parameters:
+                - name: X-Access-Key
+                    in: header
+                    required: true
+                    schema:
+                        type: string
+                - name: queueName
+                    in: query
+                    required: true
+                    schema:
+                        type: string
+                - name: markQueued
+                    in: query
+                    required: false
+                    schema:
+                        type: boolean
+            responses:
+                '200':
+                    description: Job found for processing and succesfully returned, also marked as status 'queued' if the 'markQueued' parameter is 'true'
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    uid:
+                                        type: string
+                                        description: UUID for the job
+                                    priority:
+                                        type: integer
+                                        description: Priority of the job in relation to other jobs in the queue
+                                    keep_minutes:
+                                        type: integer
+                                        description: Number of minutes to keep the job after it's been set to complete/failed
+                                    timeout_minutes:
+                                        type: integer
+                                        description: Timeout period from being set to 'inprogress' until its marked as failed if there is no update
+                                    last_updated:
+                                        type: integer
+                                        description: Unix epoch time of the last update to the job
+                                    created:
+                                        type: integer
+                                        description: Unix epoch time that the job was created in the queue
+                                    timeout_time: 
+                                        type: integer
+                                        description: Unix epoch time from which to not consider the job needed for execution, or "0" to never expire
+                                    content:
+                                        type: object
+                                        description: Content of the job as a JSON object
+                                    state:
+                                        type: string
+                                        description: Status of the job from ["queued", "inprogress"] - if 'markQueued' is enabled, this will always be 'inprogress' - if not, 'queued'
+                            example:
+                                uid: 4282c156-a1e0-46df-aba2-531c13fcce17
+                                priority: 45
+                                keep_minutes: 60
+                                timeout_minutes: 10
+                                last_updated: 1587828519
+                                created: 1587828519
+                                timeout_time: 0
+                                content:
+                                    foo: bar
+                                    bar: foo
+                                state: inprogress
+                '204':
+                    description: Queued found, but no job exists at status 'queued' ready to process
+                '400':
+                    description: Invalid header/query values
+                '401': 
+                    description: X-Access-Key header field is not valid for the requested queue
+                '404':
+                    description: Requested queue does not exist
+                '500':
+                    description: Error handling request
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                                        description: Details of the error encountered
+                            example:
+                                error: example error message

@@ -12,13 +12,14 @@ import (
 type QueryController interface {
 	CreateQueue(name, accessKey string) error
 	GetQueue(name, accessKey string) (*Queue, error)
+	UpdateQueue(queueName string) error
 	DeleteQueue(name, accessKey string) error
 	AddJob(job *Job, queueName, accessKey string, sort bool) error
 	GetJob(uid, queueName, accessKey string) (*Job, error)
 	GetNextJob(queueName, accessKey string) (*Job, error)
 	GetAllJobs(queueName, accessKey string) ([]*Job, error)
 	UpdateJobStatus(uid, newStatus, queueName, accessKey string) error
-	UpdateQueue(queueName string) error
+	DeleteJob(uid, queueName, accessKey string) error
 }
 
 // QueryControl object is used to make queries to the database
@@ -70,7 +71,7 @@ func (c *QueryControl) CreateQueue(name, accessKey string) error {
 // GetQueue returns the given queue object entry or nil if it cannot be found
 func (c *QueryControl) GetQueue(name, accessKey string) (*Queue, error) {
 	if len(name) == 0 || len(accessKey) == 0 {
-		return nil, fmt.Errorf("Invalid Arg")
+		return nil, fmt.Errorf("Invalid Args")
 	}
 
 	hashedKey, err := c.hash.Process(accessKey)
@@ -94,7 +95,7 @@ func (c *QueryControl) GetQueue(name, accessKey string) (*Queue, error) {
 // DeleteQueue removes the given queue by name if the access token is correct
 func (c *QueryControl) DeleteQueue(name, accessKey string) error {
 	if len(name) == 0 || len(accessKey) == 0 {
-		return fmt.Errorf("Invalid Arg")
+		return fmt.Errorf("Invalid Args")
 	}
 
 	hashedKey, err := c.hash.Process(accessKey)
@@ -266,7 +267,7 @@ func (c *QueryControl) UpdateJobStatus(uid, newStatus, queueName, accessKey stri
 // UpdateQueue sorts the given queue by name, removes any jobs that are timed out etc
 func (c *QueryControl) UpdateQueue(queueName string) error {
 	if len(queueName) == 0 {
-		return fmt.Errorf("Invalid Arg")
+		return fmt.Errorf("Invalid Args")
 	}
 
 	c.db.lock.Lock()
@@ -303,6 +304,47 @@ func (c *QueryControl) UpdateQueue(queueName string) error {
 
 	c.sortQueue(queue)
 	return nil
+}
+
+// DeleteJob deletes the given job by uid from the given queueName
+func (c *QueryControl) DeleteJob(uid, queueName, accessKey string) error {
+	if len(uid) == 0 || len(queueName) == 0 || len(accessKey) == 0 {
+		return fmt.Errorf("Invalid Args")
+	}
+
+	hashedKey, err := c.hash.Process(accessKey)
+	if err != nil {
+		return err
+	}
+
+	c.db.lock.Lock()
+	defer c.db.lock.Unlock()
+
+	queue, found := c.db.Queues[queueName]
+	if !found {
+		return fmt.Errorf("Not Found")
+	} else if queue.AccessKey != hashedKey {
+		return fmt.Errorf("Unauthorized")
+	}
+
+	index := -1
+	for i, job := range queue.Jobs {
+		if job.UID == uid {
+			index = i
+			break
+		}
+	}
+
+	// remove in linear time to preserve order
+	if index >= 0 {
+		copy(queue.Jobs[index:], queue.Jobs[index+1:])
+		queue.Jobs[len(queue.Jobs)-1] = nil
+		queue.Jobs = queue.Jobs[:len(queue.Jobs)-1]
+		queue.Size--
+		return nil
+	}
+
+	return fmt.Errorf("Not Found")
 }
 
 // deleteJobAtIndex removes the given index from the job queue, cleans up memory during delete

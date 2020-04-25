@@ -51,6 +51,8 @@ func NewHTTPAPI(logger logger.Logger, monitor database.DBMonitor, controller dat
 	api.router.Put("/api/v1/job", api.AddJob)
 	api.router.Get("/api/v1/job", api.GetJob)
 	api.router.Get("/api/v1/job/next", api.GetNextJob)
+	api.router.Post("/api/v1/job/update", api.UpdateJobStatus)
+	api.router.Delete("/api/v1/job/delete", api.DeleteJob)
 
 	return api
 }
@@ -109,7 +111,7 @@ func (a *HTTPAPI) GetQueue(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errStr := err.Error()
 		switch {
-		case errStr == "Invalid Arg":
+		case errStr == "Invalid Args":
 			returnStatusCode(http.StatusBadRequest, w)
 		case errStr == "Unauthorized":
 			returnStatusCode(http.StatusUnauthorized, w)
@@ -144,7 +146,7 @@ func (a *HTTPAPI) DeleteQueue(w http.ResponseWriter, r *http.Request) {
 	if err := a.control.DeleteQueue(queueName, accessKey); err != nil {
 		errStr := err.Error()
 		switch {
-		case errStr == "Invalid Arg":
+		case errStr == "Invalid Args":
 			returnStatusCode(http.StatusBadRequest, w)
 		case errStr == "Unauthorized":
 			returnStatusCode(http.StatusUnauthorized, w)
@@ -179,7 +181,7 @@ func (a *HTTPAPI) AddJob(w http.ResponseWriter, r *http.Request) {
 	if err = a.control.AddJob(job, body.QueueName, accessKey, false); err != nil {
 		errStr := err.Error()
 		switch {
-		case errStr == "Invalid Arg":
+		case errStr == "Invalid Args":
 			returnStatusCode(http.StatusBadRequest, w)
 		case errStr == "Unauthorized":
 			returnStatusCode(http.StatusUnauthorized, w)
@@ -217,7 +219,7 @@ func (a *HTTPAPI) GetJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errStr := err.Error()
 		switch {
-		case errStr == "Invalid Arg":
+		case errStr == "Invalid Args":
 			returnStatusCode(http.StatusBadRequest, w)
 		case errStr == "Unauthorized":
 			returnStatusCode(http.StatusUnauthorized, w)
@@ -254,7 +256,7 @@ func (a *HTTPAPI) GetNextJob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errStr := err.Error()
 		switch {
-		case errStr == "Invalid Arg":
+		case errStr == "Invalid Args":
 			returnStatusCode(http.StatusBadRequest, w)
 		case errStr == "Unauthorized":
 			returnStatusCode(http.StatusUnauthorized, w)
@@ -283,4 +285,76 @@ func (a *HTTPAPI) GetNextJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+// UpdateJobStatus is a handler for updating the status of a given job
+func (a *HTTPAPI) UpdateJobStatus(w http.ResponseWriter, r *http.Request) {
+	accessKey := r.Header.Get("X-Access-Key")
+	if len(accessKey) == 0 {
+		returnStatusCode(http.StatusBadRequest, w)
+		return
+	}
+
+	body := new(UpdateJobStatusRequest)
+	if err := getRequestBody(body, r, a.json); err != nil {
+		returnStatusCode(http.StatusBadRequest, w)
+		return
+	}
+
+	// regardless whether the user has access, we should use this time to update the queue
+	if !updateQueue(body.QueueName, a.control, w, a.json, a.monitor) {
+		return
+	}
+
+	if err := a.control.UpdateJobStatus(body.UID, strings.ToLower(body.NewStatus), body.QueueName, accessKey); err != nil {
+		errStr := err.Error()
+		switch {
+		case errStr == "Invalid Args":
+			returnStatusCode(http.StatusBadRequest, w)
+		case errStr == "Unauthorized":
+			returnStatusCode(http.StatusUnauthorized, w)
+		case errStr == "Not Found":
+			returnStatusCode(http.StatusNotFound, w)
+		default:
+			returnInternalServerError(err, w, a.json)
+		}
+		return
+	}
+
+	a.monitor.Write()
+	returnStatusCode(http.StatusOK, w)
+}
+
+// DeleteJob is a handler for deleting a job entry
+func (a *HTTPAPI) DeleteJob(w http.ResponseWriter, r *http.Request) {
+	accessKey := r.Header.Get("X-Access-Key")
+	queueName := r.URL.Query().Get("queueName")
+	uid := r.URL.Query().Get("jobUID")
+	if len(uid) == 0 || len(queueName) == 0 || len(accessKey) == 0 {
+		returnStatusCode(http.StatusBadRequest, w)
+		return
+	}
+
+	// regardless whether the user has access, we should use this time to update the queue
+	if !updateQueue(queueName, a.control, w, a.json, a.monitor) {
+		return
+	}
+
+	if err := a.control.DeleteJob(uid, queueName, accessKey); err != nil {
+		errStr := err.Error()
+		switch {
+		case errStr == "Invalid Args":
+			returnStatusCode(http.StatusBadRequest, w)
+		case errStr == "Unauthorized":
+			returnStatusCode(http.StatusUnauthorized, w)
+		case errStr == "Not Found":
+			returnStatusCode(http.StatusNotFound, w)
+		default:
+			returnInternalServerError(err, w, a.json)
+		}
+		return
+	}
+
+	a.monitor.Write()
+	returnStatusCode(http.StatusNoContent, w)
 }

@@ -62,7 +62,7 @@ func updateQueue(queueName string, c database.QueryController, w http.ResponseWr
 	if err := c.UpdateQueue(queueName); err != nil {
 		errStr := err.Error()
 		switch {
-		case errStr == "Invalid Arg":
+		case errStr == "Invalid Args":
 			returnStatusCode(http.StatusBadRequest, w)
 		case errStr == "Not Found":
 			returnStatusCode(http.StatusNotFound, w)

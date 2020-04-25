@@ -13,3 +13,10 @@ type AddJobRequest struct {
 	Job       *database.Job `json:"job"`
 	QueueName string        `json:"queue_name"`
 }
+
+// UpdateJobStatusRequest represents the request body for the update job endpoint
+type UpdateJobStatusRequest struct {
+	QueueName string `json:"queue_name"`
+	UID       string `json:"uid"`
+	NewStatus string `json:"new_status"`
+}

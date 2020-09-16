@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/MichaelWittgreffe/jobengine/api"
-	"github.com/MichaelWittgreffe/jobengine/crypto"
-	"github.com/MichaelWittgreffe/jobengine/database"
-	"github.com/MichaelWittgreffe/jobengine/filesystem"
-	"github.com/MichaelWittgreffe/jobengine/logger"
+	"github.com/MichaelWittgreffe/jobengine/pkg/api"
+	"github.com/MichaelWittgreffe/jobengine/pkg/crypto"
+	"github.com/MichaelWittgreffe/jobengine/pkg/database"
+	"github.com/MichaelWittgreffe/jobengine/pkg/filesystem"
+	"github.com/MichaelWittgreffe/jobengine/pkg/logger"
 )
 
 func main() {
@@ -47,6 +47,7 @@ func main() {
 	go dbFileMonitor.Start()
 
 	httpAPI := api.NewHTTPAPI(logger, dbFileMonitor, database.NewQueryController(dbFile, crypto.NewHashHandler("sha512")))
+	logger.Info(fmt.Sprintf("Started Listening On Port %s", apiPort))
 	logger.Fatal(httpAPI.ListenAndServe(apiPort).Error())
 }
 

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MichaelWittgreffe/jobengine/database"
-	"github.com/MichaelWittgreffe/jobengine/logger"
+	"github.com/MichaelWittgreffe/jobengine/pkg/database"
+	"github.com/MichaelWittgreffe/jobengine/pkg/logger"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/google/uuid"

@@ -3,7 +3,7 @@ package database
 import (
 	"fmt"
 
-	"github.com/MichaelWittgreffe/jobengine/logger"
+	"github.com/MichaelWittgreffe/jobengine/pkg/logger"
 )
 
 // DBMonitor presents an object for write requests and start monitoring the DB

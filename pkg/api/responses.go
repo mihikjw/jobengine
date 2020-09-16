@@ -1,6 +1,6 @@
 package api
 
-import "github.com/MichaelWittgreffe/jobengine/database"
+import "github.com/MichaelWittgreffe/jobengine/pkg/database"
 
 // ErrorResponse can be called from any handler, to notify of an error in the request/processing
 type ErrorResponse struct {

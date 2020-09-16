@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/MichaelWittgreffe/jobengine/database"
+	"github.com/MichaelWittgreffe/jobengine/pkg/database"
 )
 
 // getRequestBody marshals the incoming request body into the given object pointer

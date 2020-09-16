@@ -4,10 +4,11 @@ all:
 	@$(MAKE) create-dir install test build success || $(MAKE) failure
 
 install: 
+	go mod tidy
 	go mod download
 
 build:
-	GOOS=linux go build -o bin/${APPLICATION_NAME} -v
+	GOOS=linux go build -o bin/${APPLICATION_NAME} -v cmd/${APPLICATION_NAME}.go
 
 ide-build:
 	@$(MAKE) build success || $(MAKE) failure

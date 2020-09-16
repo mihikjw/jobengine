@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/MichaelWittgreffe/jobengine/crypto"
+	"github.com/MichaelWittgreffe/jobengine/pkg/crypto"
 )
 
 // QueryController defines an object used to make queries to the database

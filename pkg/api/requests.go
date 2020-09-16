@@ -1,6 +1,6 @@
 package api
 
-import "github.com/MichaelWittgreffe/jobengine/database"
+import "github.com/MichaelWittgreffe/jobengine/pkg/database"
 
 // CreateQueueRequest represents the request body for the create queue endpoint
 type CreateQueueRequest struct {

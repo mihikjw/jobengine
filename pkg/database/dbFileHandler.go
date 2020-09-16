@@ -3,8 +3,8 @@ package database
 import (
 	"fmt"
 
-	"github.com/MichaelWittgreffe/jobengine/crypto"
-	"github.com/MichaelWittgreffe/jobengine/filesystem"
+	"github.com/MichaelWittgreffe/jobengine/pkg/crypto"
+	"github.com/MichaelWittgreffe/jobengine/pkg/filesystem"
 )
 
 // DBFileHandler provides an interface for an object to load/save the db file to disk
